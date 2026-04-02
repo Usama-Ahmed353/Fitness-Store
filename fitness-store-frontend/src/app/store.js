@@ -1,0 +1,89 @@
+import { configureStore } from '@reduxjs/toolkit';
+import {
+  persistStore,
+  persistReducer,
+  FLUSH,
+  REHYDRATE,
+  PAUSE,
+  PERSIST,
+  PURGE,
+  REGISTER,
+} from 'redux-persist';
+import authReducer from './slices/authSlice';
+import gymReducer from './slices/gymSlice';
+import classReducer from './slices/classSlice';
+import memberReducer from './slices/memberSlice';
+import trainerReducer from './slices/trainerSlice';
+import notificationReducer from './slices/notificationSlice';
+import uiReducer from './slices/uiSlice';
+import loadingReducer from './slices/loadingSlice';
+
+// Create a localStorage wrapper that works in all environments
+const storage = {
+  getItem: (key) => {
+    try {
+      return typeof window !== 'undefined' && window.localStorage
+        ? Promise.resolve(window.localStorage.getItem(key))
+        : Promise.resolve(null);
+    } catch (e) {
+      return Promise.resolve(null);
+    }
+  },
+  setItem: (key, value) => {
+    try {
+      if (typeof window !== 'undefined' && window.localStorage) {
+        window.localStorage.setItem(key, value);
+      }
+      return Promise.resolve();
+    } catch (e) {
+      return Promise.resolve();
+    }
+  },
+  removeItem: (key) => {
+    try {
+      if (typeof window !== 'undefined' && window.localStorage) {
+        window.localStorage.removeItem(key);
+      }
+      return Promise.resolve();
+    } catch (e) {
+      return Promise.resolve();
+    }
+  },
+};
+
+// Configure persist for auth and member slices (localStorage)
+const authPersistConfig = {
+  key: 'auth',
+  storage,
+  whitelist: ['user', 'accessToken', 'refreshToken', 'isAuthenticated'],
+};
+
+const memberPersistConfig = {
+  key: 'member',
+  storage,
+  whitelist: ['currentMembership', 'bookings', 'favorites'],
+};
+
+const persistedAuthReducer = persistReducer(authPersistConfig, authReducer);
+const persistedMemberReducer = persistReducer(memberPersistConfig, memberReducer);
+
+export const store = configureStore({
+  reducer: {
+    auth: persistedAuthReducer,
+    gyms: gymReducer,
+    classes: classReducer,
+    member: persistedMemberReducer,
+    trainers: trainerReducer,
+    notifications: notificationReducer,
+    ui: uiReducer,
+    loading: loadingReducer,
+  },
+  middleware: (getDefaultMiddleware) =>
+    getDefaultMiddleware({
+      serializableCheck: {
+        ignoredActions: [FLUSH, REHYDRATE, PAUSE, PERSIST, PURGE, REGISTER],
+      },
+    }),
+});
+
+export const persistor = persistStore(store);

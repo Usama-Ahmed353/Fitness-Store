@@ -1,0 +1,27 @@
+import React from 'react';
+import { motion } from 'framer-motion';
+
+const GymOwnerDashboard = () => {
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.5 }}
+      className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12"
+    >
+      <h1 className="text-4xl font-bold text-white mb-8">Gym Owner Dashboard</h1>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+        {['Members', 'Classes', 'Revenue'].map((card, idx) => (
+          <div
+            key={idx}
+            className="bg-dark-navy/50 border border-accent/20 rounded-xl p-6 text-light-bg/70 text-center h-40 flex items-center justify-center"
+          >
+            <p>{card} Coming Soon</p>
+          </div>
+        ))}
+      </div>
+    </motion.div>
+  );
+};
+
+export default GymOwnerDashboard;

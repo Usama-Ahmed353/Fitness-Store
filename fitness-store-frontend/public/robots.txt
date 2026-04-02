@@ -1,0 +1,45 @@
+User-agent: *
+Allow: /
+Disallow: /admin/
+Disallow: /gym-owner/
+Disallow: /api/
+Disallow: /.well-known/
+Disallow: /cdn-cgi/
+Disallow: /?utm_
+Disallow: /*?*sort=
+Disallow: /*?*filter=
+
+# Allow search engines to crawl public pages
+Allow: /
+Allow: /home
+Allow: /locations
+Allow: /classes
+Allow: /training
+Allow: /crunch-plus
+Allow: /membership
+Allow: /about
+Allow: /free-trial
+Allow: /contact
+
+# Crawl delays
+Crawl-delay: 1
+Request-rate: 1/1s
+
+# Sitemap
+Sitemap: https://www.crunchfit.com/sitemap.xml
+Sitemap: https://www.crunchfit.com/sitemap-gyms.xml
+Sitemap: https://www.crunchfit.com/sitemap-classes.xml
+
+# specific crawlers
+User-agent: Googlebot
+Disallow: /admin/
+Crawl-delay: 0
+
+User-agent: Bingbot
+Disallow: /admin/
+Crawl-delay: 1
+
+User-agent: *
+Disallow: /member/
+Disallow: /verify-email
+Disallow: /reset-password

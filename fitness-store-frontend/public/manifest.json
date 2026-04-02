@@ -1,0 +1,82 @@
+{
+  "name": "CrunchFit Pro",
+  "short_name": "CrunchFit",
+  "description": "Crush your fitness goals with CrunchFit Pro. Access 100+ group fitness classes, personal training, and state-of-the-art gym facilities.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#1A1A2E",
+  "theme_color": "#E94560",
+  "categories": ["fitness", "health", "sports"],
+  "prefer_related_applications": false,
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "192x192",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "/favicon.svg",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "maskable"
+    }
+  ],
+  "screenshots": [
+    {
+      "src": "/screenshot-540x720.png",
+      "sizes": "540x720",
+      "type": "image/png",
+      "form_factor": "narrow"
+    },
+    {
+      "src": "/screenshot-1280x720.png",
+      "sizes": "1280x720",
+      "type": "image/png",
+      "form_factor": "wide"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Find a Gym",
+      "short_name": "Gyms",
+      "description": "Find a CrunchFit gym location near you",
+      "url": "/locations",
+      "icons": [
+        {
+          "src": "/icon-96x96.png",
+          "sizes": "96x96",
+          "type": "image/png"
+        }
+      ]
+    },
+    {
+      "name": "Classes",
+      "short_name": "Classes",
+      "description": "Explore all group fitness classes",
+      "url": "/classes",
+      "icons": [
+        {
+          "src": "/icon-96x96.png",
+          "sizes": "96x96",
+          "type": "image/png"
+        }
+      ]
+    },
+    {
+      "name": "Membership Plans",
+      "short_name": "Plans",
+      "description": "View membership pricing and plans",
+      "url": "/membership",
+      "icons": [
+        {
+          "src": "/icon-96x96.png",
+          "sizes": "96x96",
+          "type": "image/png"
+        }
+      ]
+    }
+  ]
+}
