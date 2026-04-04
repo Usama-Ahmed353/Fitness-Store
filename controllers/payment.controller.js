@@ -159,7 +159,7 @@ exports.cancelSubscription = async (req, res) => {
     // Verify ownership
     const member = await Member.findOne({
       userId,
-      'stripeInfo.subscriptionId': subscriptionId,
+      stripeSubscriptionId: subscriptionId,
     });
 
     if (!member) {

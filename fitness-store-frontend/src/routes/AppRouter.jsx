@@ -38,6 +38,17 @@ const AdminDashboard = React.lazy(() => import('../pages/admin/Dashboard'));
 const GymOwnerDashboard = React.lazy(() => import('../pages/gym-owner/Dashboard'));
 const NotFoundPage = React.lazy(() => import('../pages/NotFoundPage'));
 
+// Shop / E-Commerce Pages
+const ShopPage = React.lazy(() => import('../pages/shop/ShopPage'));
+const ProductDetailPage = React.lazy(() => import('../pages/shop/ProductDetailPage'));
+const CartPage = React.lazy(() => import('../pages/shop/CartPage'));
+const CheckoutPage = React.lazy(() => import('../pages/shop/CheckoutPage'));
+const OrdersPage = React.lazy(() => import('../pages/shop/OrdersPage'));
+const OrderDetailPage = React.lazy(() => import('../pages/shop/OrderDetailPage'));
+const WishlistPage = React.lazy(() => import('../pages/shop/WishlistPage'));
+const AdminProductsPage = React.lazy(() => import('../pages/admin/ProductsPage'));
+const AdminOrdersPage = React.lazy(() => import('../pages/admin/OrdersPage'));
+
 // Protected Route Component
 const ProtectedRoute = ({ children, requiredRole = null }) => {
   const { isAuthenticated, user } = useSelector((state) => state.auth);
@@ -367,6 +378,101 @@ const AppRouter = () => {
               <GymOwnerLayout>
                 <GymOwnerDashboard />
               </GymOwnerLayout>
+            </ProtectedRoute>
+          }
+        />
+
+        {/* Shop / E-Commerce Routes */}
+        <Route
+          path="/shop"
+          element={
+            <PublicLayout>
+              <ShopPage />
+            </PublicLayout>
+          }
+        />
+
+        <Route
+          path="/product/:slug"
+          element={
+            <PublicLayout>
+              <ProductDetailPage />
+            </PublicLayout>
+          }
+        />
+
+        <Route
+          path="/cart"
+          element={
+            <PublicLayout>
+              <CartPage />
+            </PublicLayout>
+          }
+        />
+
+        <Route
+          path="/checkout"
+          element={
+            <ProtectedRoute>
+              <PublicLayout>
+                <CheckoutPage />
+              </PublicLayout>
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/orders"
+          element={
+            <ProtectedRoute>
+              <MemberLayout>
+                <OrdersPage />
+              </MemberLayout>
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/orders/:id"
+          element={
+            <ProtectedRoute>
+              <MemberLayout>
+                <OrderDetailPage />
+              </MemberLayout>
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/wishlist"
+          element={
+            <ProtectedRoute>
+              <MemberLayout>
+                <WishlistPage />
+              </MemberLayout>
+            </ProtectedRoute>
+          }
+        />
+
+        {/* Admin E-Commerce Routes */}
+        <Route
+          path="/admin/products"
+          element={
+            <ProtectedRoute requiredRole="admin">
+              <AdminLayout>
+                <AdminProductsPage />
+              </AdminLayout>
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/admin/orders"
+          element={
+            <ProtectedRoute requiredRole="admin">
+              <AdminLayout>
+                <AdminOrdersPage />
+              </AdminLayout>
             </ProtectedRoute>
           }
         />

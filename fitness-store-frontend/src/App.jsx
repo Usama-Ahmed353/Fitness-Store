@@ -5,6 +5,7 @@ import { Toaster } from 'react-hot-toast';
 import { Suspense } from 'react';
 import { store, persistor } from './app/store';
 import AppRouter from './routes/AppRouter';
+import ChatbotWidget from './components/chat/ChatbotWidget';
 import PWAInstallPrompt from './components/pwa/PWAInstallPrompt';
 import { ThemeProvider } from './context/ThemeContext';
 import SkipToMainContent from './components/accessibility/SkipToMainContent';
@@ -25,6 +26,9 @@ function AppContent() {
 
       {/* Router with all pages */}
       <AppRouter />
+
+      {/* AI Chatbot Widget */}
+      <ChatbotWidget />
 
       {/* Toast Notifications */}
       <Toaster
