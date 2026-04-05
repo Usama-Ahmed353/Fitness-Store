@@ -6,7 +6,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { motion } from 'framer-motion'; // eslint-disable-line no-unused-vars
 import { Eye, EyeOff, LogIn, ArrowRight } from 'lucide-react';
-import { loginAsync } from '../../app/slices/authSlice';
+import { loginAsync, clearAuth } from '../../app/slices/authSlice';
 import Button from '../../components/ui/Button';
 import Input from '../../components/ui/Input';
 import Card from '../../components/ui/Card';
@@ -26,9 +26,15 @@ const demoAccounts = [
 const LoginPage = () => {
   const navigate = useNavigate();
   const dispatch = useDispatch();
-  const { isAuthenticated, isLoading, error, user } = useSelector((state) => state.auth);
+  const { isLoading, error } = useSelector((state) => state.auth);
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
+
+  // Clear any existing session when visiting the login page
+  // so the user always sees the login form
+  useEffect(() => {
+    dispatch(clearAuth());
+  }, [dispatch]);
 
   const {
     register,
@@ -43,21 +49,6 @@ const LoginPage = () => {
     },
   });
 
-  useEffect(() => {
-    if (isAuthenticated && user) {
-      const role = user.role;
-      if (role === 'admin' || role === 'super_admin') {
-        navigate('/admin/dashboard');
-      } else if (role === 'gym_owner') {
-        navigate('/gym-owner/dashboard');
-      } else if (role === 'trainer') {
-        navigate('/trainer/dashboard');
-      } else {
-        navigate('/member/dashboard');
-      }
-    }
-  }, [isAuthenticated, user, navigate]);
-
   const onSubmit = async (data) => {
     try {
       const result = await dispatch(loginAsync({
@@ -68,6 +59,16 @@ const LoginPage = () => {
 
       if (result) {
         toast.success('Welcome back!');
+        const role = result.user?.role;
+        if (role === 'admin' || role === 'super_admin') {
+          navigate('/admin/dashboard');
+        } else if (role === 'gym_owner') {
+          navigate('/gym-owner/dashboard');
+        } else if (role === 'trainer') {
+          navigate('/trainer/dashboard');
+        } else {
+          navigate('/member/dashboard');
+        }
       }
     } catch (err) {
       toast.error(typeof err === 'string' ? err : (err?.message || 'Login failed'));

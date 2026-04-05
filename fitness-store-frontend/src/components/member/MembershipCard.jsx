@@ -95,9 +95,9 @@ export const MembershipCard = () => {
       transition={{ duration: 0.5, delay: 0.6 }}
       className={`rounded-xl overflow-hidden shadow-lg ${
         isDark
-          ? 'bg-gradient-to-br from-accent/30 via-accent/10 to-transparent'
-          : 'bg-gradient-to-br from-accent/20 via-accent/5 to-transparent'
-      } border ${isDark ? 'border-accent/30' : 'border-accent/20'}`}
+          ? 'bg-gradient-to-br from-rose-600 via-rose-700 to-rose-900'
+          : 'bg-gradient-to-br from-rose-500 via-rose-600 to-rose-800'
+      } border ${isDark ? 'border-rose-500/30' : 'border-rose-400/30'}`}
     >
       {/* Card Header */}
       <div className="p-6 md:p-8">
@@ -133,17 +133,17 @@ export const MembershipCard = () => {
         <div className="space-y-4 mb-8 text-white">
           <div>
             <p className="text-xs text-white/70 uppercase tracking-wide mb-1">
-              {t('member.membership.memberName')}
+              Member Name
             </p>
-            <p className="text-lg font-semibold">{memberName}</p>
+            <p className="text-lg font-semibold truncate">{memberName}</p>
           </div>
 
           <div className="grid grid-cols-2 gap-4">
             <div>
               <p className="text-xs text-white/70 uppercase tracking-wide mb-1">
-                {t('member.membership.gym')}
+                Gym
               </p>
-              <p className="font-medium">{gymName}</p>
+              <p className="font-medium truncate">{gymName}</p>
             </div>
             <div>
               <p className="text-xs text-white/70 uppercase tracking-wide mb-1">
@@ -160,7 +160,7 @@ export const MembershipCard = () => {
           fullWidth
           className="text-white border-white/30 hover:bg-white/10"
         >
-          {t('member.membership.upgrade')}
+          {t('member.membership.upgradePlan')}
         </Button>
       </div>
     </motion.div>

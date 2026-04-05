@@ -15,12 +15,12 @@ const AchievementBadge = ({ badge, unlocked, index }) => {
       animate={{ opacity: 1, scale: 1 }}
       transition={{ duration: 0.3, delay: index * 0.05 }}
       whileHover={unlocked ? { scale: 1.1, y: -4 } : {}}
-      className="flex flex-col items-center justify-center group cursor-pointer"
+      className="flex flex-col items-center justify-center group cursor-pointer min-w-0"
     >
       <div className="relative">
         {/* Badge Container */}
         <div
-          className={`w-16 h-16 md:w-20 md:h-20 rounded-full flex items-center justify-center text-2xl md:text-3xl transition-all ${
+          className={`w-14 h-14 md:w-16 md:h-16 rounded-full flex items-center justify-center text-xl md:text-2xl transition-all ${
             unlocked
               ? 'bg-gradient-to-br from-accent/30 to-accent/10 scale-100'
               : isDark
@@ -95,48 +95,48 @@ export const Achievements = ({ achievements = [] }) => {
   const defaultBadges = achievements.length > 0 ? achievements : [
     {
       id: 'first-class',
-      name: t('member.badges.firstClass'),
-      description: t('member.badges.firstClassDesc'),
+      name: t('member.achievements.firstClass'),
+      description: t('member.achievements.firstClassDesc'),
       icon: '🎯',
       unlocked: true,
       progress: 100,
     },
     {
       id: '7day-streak',
-      name: t('member.badges.sevenDayStreak'),
-      description: t('member.badges.sevenDayStreakDesc'),
+      name: t('member.achievements.sevenDayStreak'),
+      description: t('member.achievements.sevenDayStreakDesc'),
       icon: '🔥',
       unlocked: true,
       progress: 100,
     },
     {
       id: '50-classes',
-      name: t('member.badges.fiftyClasses'),
-      description: t('member.badges.fiftyClassesDesc'),
+      name: t('member.achievements.fiftyClasses'),
+      description: t('member.achievements.fiftyClassesDesc'),
       icon: '🏆',
       unlocked: true,
       progress: 100,
     },
     {
       id: 'early-bird',
-      name: t('member.badges.earlyBird'),
-      description: t('member.badges.earlyBirdDesc'),
+      name: t('member.achievements.earlyBird'),
+      description: t('member.achievements.earlyBirdDesc'),
       icon: '🐔',
       unlocked: true,
       progress: 100,
     },
     {
       id: 'night-owl',
-      name: t('member.badges.nightOwl'),
-      description: t('member.badges.nightOwlDesc'),
+      name: t('member.achievements.nightOwl'),
+      description: t('member.achievements.nightOwlDesc'),
       icon: '🌙',
       unlocked: false,
       progress: 60,
     },
     {
       id: '100-classes',
-      name: t('member.badges.hundredClasses'),
-      description: t('member.badges.hundredClassesDesc'),
+      name: t('member.achievements.hundredClasses'),
+      description: t('member.achievements.hundredClassesDesc'),
       icon: '💯',
       unlocked: false,
       progress: 35,
@@ -177,7 +177,7 @@ export const Achievements = ({ achievements = [] }) => {
       </div>
 
       {/* Badge Grid */}
-      <div className="grid grid-cols-3 md:grid-cols-6 gap-4">
+      <div className="grid grid-cols-3 gap-4">
         {defaultBadges.map((badge, idx) => (
           <AchievementBadge
             key={badge.id}
