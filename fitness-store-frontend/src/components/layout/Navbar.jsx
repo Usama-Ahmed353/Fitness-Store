@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Menu, X, ChevronDown, Moon, Sun, ShoppingBag, ShoppingCart } from 'lucide-react';
+import { Menu, X, Moon, Sun, ShoppingCart } from 'lucide-react';
 import { useSelector } from 'react-redux';
 import Button from '../ui/Button';
 import { useTheme } from '../../context/ThemeContext';
@@ -15,7 +15,7 @@ const Navbar = () => {
   
   // Theme and Language hooks
   const { isDark, toggleTheme } = useTheme();
-  const { t, setLanguage, language } = useLanguage();
+  const { t } = useLanguage();
 
   const { items: cartItems } = useSelector((state) => state.cart || { items: [] });
   const cartCount = cartItems?.length || 0;
@@ -154,52 +154,14 @@ const Navbar = () => {
                 {isDark ? <Sun size={20} /> : <Moon size={20} />}
               </motion.button>
 
-              {/* Language Switcher */}
-              <motion.div
-                whileHover={{ scale: 1.05 }}
-                className="relative group"
+              <div
+                className={`text-sm font-medium px-3 py-2 rounded-lg ${
+                  isDark ? 'text-gray-300 bg-gray-800/30' : 'text-gray-700 bg-gray-100'
+                }`}
+                title={t('navbar.language')}
               >
-                <button
-                  className={`flex items-center gap-1 text-sm font-medium px-3 py-2 rounded-lg transition-colors ${
-                    isDark
-                      ? 'text-gray-300 hover:text-accent bg-gray-800/30 hover:bg-gray-800/50'
-                      : 'text-gray-700 hover:text-accent bg-gray-100 hover:bg-gray-200'
-                  }`}
-                  aria-label={t('accessibility.toggleLanguage')}
-                  title={t('navbar.language')}
-                >
-                  {language === 'en' ? '🇺🇸 EN' : '🇪🇸 ES'}
-                  <ChevronDown size={16} />
-                </button>
-
-                {/* Dropdown */}
-                <div
-                  className={`absolute right-0 mt-2 w-32 rounded-lg shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 border ${
-                    isDark
-                      ? 'bg-gray-800 border-gray-700'
-                      : 'bg-white border-gray-200'
-                  }`}
-                >
-                  {[
-                    { code: 'en', label: '🇺🇸 English' },
-                    { code: 'es', label: '🇪🇸 Español' },
-                  ].map((lang) => (
-                    <button
-                      key={lang.code}
-                      onClick={() => setLanguage(lang.code)}
-                      className={`w-full px-4 py-2 text-sm text-left transition-colors ${
-                        language === lang.code
-                          ? 'bg-accent text-white'
-                          : isDark
-                          ? 'text-gray-300 hover:bg-gray-700'
-                          : 'text-gray-700 hover:bg-gray-100'
-                      }`}
-                    >
-                      {lang.label}
-                    </button>
-                  ))}
-                </div>
-              </motion.div>
+                EN
+              </div>
 
               {/* Free Trial CTA Button */}
               <Button
@@ -257,19 +219,13 @@ const Navbar = () => {
                 {isDark ? <Sun size={20} /> : <Moon size={20} />}
               </motion.button>
 
-              {/* Mobile Language Toggle */}
-              <motion.button
-                whileTap={{ scale: 0.95 }}
-                onClick={() => setLanguage(language === 'en' ? 'es' : 'en')}
-                className={`text-sm font-medium px-2 py-1 rounded-lg transition-colors ${
-                  isDark
-                    ? 'text-gray-300 hover:text-accent bg-gray-800/30 hover:bg-gray-800/50'
-                    : 'text-gray-700 hover:text-accent bg-gray-100 hover:bg-gray-200'
+              <span
+                className={`text-sm font-medium px-2 py-1 rounded-lg ${
+                  isDark ? 'text-gray-300 bg-gray-800/30' : 'text-gray-700 bg-gray-100'
                 }`}
-                aria-label={t('accessibility.toggleLanguage')}
               >
-                {language === 'en' ? '🇺🇸' : '🇪🇸'}
-              </motion.button>
+                EN
+              </span>
 
               {/* Hamburger Menu Button */}
               <motion.button

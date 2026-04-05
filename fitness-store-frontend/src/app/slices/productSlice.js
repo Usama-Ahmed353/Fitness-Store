@@ -1,7 +1,10 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import axios from 'axios';
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api';
+const runtimeHost =
+  typeof window !== 'undefined' ? window.location.hostname : 'localhost';
+const API_BASE_URL =
+  import.meta.env.VITE_API_BASE_URL || `http://${runtimeHost}:5001/api`;
 
 const api = axios.create({ baseURL: API_BASE_URL });
 
@@ -90,6 +93,30 @@ export const searchAutocomplete = createAsyncThunk('products/autocomplete', asyn
   }
 });
 
+export const searchProductsWithAI = createAsyncThunk(
+  'products/searchWithAI',
+  async ({ userInput, history = [] }, { rejectWithValue }) => {
+    try {
+      const { data } = await api.post('/ai/search', { userInput, history });
+      return data.data;
+    } catch (err) {
+      return rejectWithValue(err.response?.data?.message || 'AI search failed');
+    }
+  }
+);
+
+export const fetchAIRecommendations = createAsyncThunk(
+  'products/fetchAIRecommendations',
+  async ({ userBehaviorData = {}, history = [] } = {}, { rejectWithValue }) => {
+    try {
+      const { data } = await api.post('/ai/recommend', { userBehaviorData, history });
+      return data.data;
+    } catch (err) {
+      return rejectWithValue(err.response?.data?.message || 'Failed to fetch recommendations');
+    }
+  }
+);
+
 // Admin thunks
 export const fetchAdminProducts = createAsyncThunk('products/fetchAdmin', async (params, { rejectWithValue }) => {
   try {
@@ -134,6 +161,7 @@ const productSlice = createSlice({
     selectedProduct: null,
     trending: [],
     featured: [],
+    recommended: [],
     related: [],
     categories: [],
     brands: [],
@@ -142,6 +170,10 @@ const productSlice = createSlice({
     pagination: { page: 1, limit: 12, total: 0, pages: 0 },
     adminPagination: { page: 1, limit: 20, total: 0, pages: 0 },
     loading: false,
+    aiSearchLoading: false,
+    recommendationsLoading: false,
+    aiFilters: null,
+    aiSuggestions: [],
     adminLoading: false,
     error: null,
   },
@@ -155,6 +187,10 @@ const productSlice = createSlice({
     },
     clearError(state) {
       state.error = null;
+    },
+    clearAISearch(state) {
+      state.aiFilters = null;
+      state.aiSuggestions = [];
     },
   },
   extraReducers: (builder) => {
@@ -185,11 +221,41 @@ const productSlice = createSlice({
       // Featured
       .addCase(fetchFeatured.fulfilled, (state, action) => { state.featured = action.payload; })
 
+      // AI recommendations
+      .addCase(fetchAIRecommendations.pending, (state) => {
+        state.recommendationsLoading = true;
+      })
+      .addCase(fetchAIRecommendations.fulfilled, (state, action) => {
+        state.recommendationsLoading = false;
+        state.recommended = action.payload.recommendations || [];
+      })
+      .addCase(fetchAIRecommendations.rejected, (state) => {
+        state.recommendationsLoading = false;
+      })
+
       // Related
       .addCase(fetchRelated.fulfilled, (state, action) => { state.related = action.payload; })
 
       // Autocomplete
       .addCase(searchAutocomplete.fulfilled, (state, action) => { state.autocompleteResults = action.payload; })
+
+      // AI search
+      .addCase(searchProductsWithAI.pending, (state) => {
+        state.aiSearchLoading = true;
+        state.error = null;
+      })
+      .addCase(searchProductsWithAI.fulfilled, (state, action) => {
+        state.aiSearchLoading = false;
+        state.aiFilters = action.payload.filters || null;
+        state.aiSuggestions = action.payload.suggestions || [];
+        if (Array.isArray(action.payload.products) && action.payload.products.length > 0) {
+          state.list = action.payload.products;
+        }
+      })
+      .addCase(searchProductsWithAI.rejected, (state, action) => {
+        state.aiSearchLoading = false;
+        state.error = action.payload;
+      })
 
       // Admin products
       .addCase(fetchAdminProducts.pending, (state) => { state.adminLoading = true; })
@@ -219,5 +285,5 @@ const productSlice = createSlice({
   },
 });
 
-export const { clearSelectedProduct, clearAutocomplete, clearError } = productSlice.actions;
+export const { clearSelectedProduct, clearAutocomplete, clearError, clearAISearch } = productSlice.actions;
 export default productSlice.reducer;

@@ -10,7 +10,7 @@ import {
   CheckCircle
 } from 'lucide-react';
 import { useTheme } from '../../../context/ThemeContext';
-import { useLanguage } from '../../../context/LanguageContext';
+import { useLanguage } from '../../../hooks/useLanguage';
 
 const PreferencesSettings = ({ userId, currentUser, onUnsavedChanges, onUpdate }) => {
   const { isDark, toggleTheme } = useTheme();
@@ -29,12 +29,7 @@ const PreferencesSettings = ({ userId, currentUser, onUnsavedChanges, onUpdate }
   const [saveStatus, setSaveStatus] = useState(null);
 
   const languages = [
-    { code: 'en', name: 'English' },
-    { code: 'es', name: 'Español' },
-    { code: 'fr', name: 'Français' },
-    { code: 'de', name: 'Deutsch' },
-    { code: 'it', name: 'Italiano' },
-    { code: 'pt', name: 'Português' }
+    { code: 'en', name: 'English' }
   ];
 
   const privacyLevels = [
@@ -43,9 +38,9 @@ const PreferencesSettings = ({ userId, currentUser, onUnsavedChanges, onUpdate }
     { value: 'private', label: 'Private', description: 'Only you can see your profile' }
   ];
 
-  const handleLanguageChange = (lang) => {
-    setPreferences(prev => ({ ...prev, language: lang }));
-    setLanguage(lang);
+  const handleLanguageChange = () => {
+    setPreferences(prev => ({ ...prev, language: 'en' }));
+    setLanguage('en');
     onUnsavedChanges(true);
   };
 

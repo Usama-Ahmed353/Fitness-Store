@@ -4,7 +4,15 @@ import { useSearchParams, useNavigate } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 import { motion } from 'framer-motion';
 import { Search, Filter, X, ChevronLeft, ChevronRight, Star, ShoppingCart, Heart } from 'lucide-react';
-import { fetchProducts, fetchCategories, fetchBrands, searchAutocomplete, clearAutocomplete } from '../../app/slices/productSlice';
+import {
+  fetchProducts,
+  fetchCategories,
+  fetchBrands,
+  searchAutocomplete,
+  clearAutocomplete,
+  searchProductsWithAI,
+  fetchAIRecommendations,
+} from '../../app/slices/productSlice';
 import { addToCart } from '../../app/slices/cartSlice';
 import { addToWishlist, removeFromWishlist } from '../../app/slices/wishlistSlice';
 import toast from 'react-hot-toast';
@@ -27,7 +35,18 @@ const ShopPage = () => {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
 
-  const { list: products, pagination, categories, brands, autocompleteResults, loading } = useSelector((s) => s.products);
+  const {
+    list: products,
+    pagination,
+    categories,
+    brands,
+    autocompleteResults,
+    loading,
+    aiSearchLoading,
+    aiSuggestions,
+    recommended,
+    recommendationsLoading,
+  } = useSelector((s) => s.products);
   const { isAuthenticated } = useSelector((s) => s.auth);
   const { productIds: wishlistIds } = useSelector((s) => s.wishlist);
 
@@ -47,6 +66,7 @@ const ShopPage = () => {
   useEffect(() => {
     dispatch(fetchCategories());
     dispatch(fetchBrands());
+    dispatch(fetchAIRecommendations({}));
   }, [dispatch]);
 
   useEffect(() => {
@@ -73,6 +93,42 @@ const ShopPage = () => {
     setSearchParams(params);
     dispatch(clearAutocomplete());
   }, [searchInput, searchParams, setSearchParams, dispatch]);
+
+  const handleAISearch = useCallback(async () => {
+    const query = searchInput.trim();
+    if (!query) return;
+
+    const action = await dispatch(searchProductsWithAI({ userInput: query }));
+    if (searchProductsWithAI.fulfilled.match(action)) {
+      const aiFilters = action.payload?.filters || {};
+      setFilters((prev) => ({
+        ...prev,
+        category: aiFilters.category || '',
+        brand: aiFilters.brand || '',
+        minPrice: aiFilters?.price?.min ?? '',
+        maxPrice: aiFilters?.price?.max ?? '',
+        minRating: aiFilters.minRating || '',
+      }));
+
+      const params = new URLSearchParams(searchParams);
+      params.set('page', '1');
+      if (aiFilters.category) params.set('category', aiFilters.category);
+      else params.delete('category');
+      if (aiFilters.brand) params.set('brand', aiFilters.brand);
+      else params.delete('brand');
+      if (aiFilters?.price?.min) params.set('minPrice', String(aiFilters.price.min));
+      else params.delete('minPrice');
+      if (aiFilters?.price?.max) params.set('maxPrice', String(aiFilters.price.max));
+      else params.delete('maxPrice');
+      if (aiFilters.minRating) params.set('minRating', String(aiFilters.minRating));
+      else params.delete('minRating');
+
+      setSearchParams(params);
+      toast.success('AI filters applied');
+    } else {
+      toast.error(action.payload || 'AI search failed');
+    }
+  }, [dispatch, searchInput, searchParams, setSearchParams]);
 
   const handleAutocomplete = useCallback((val) => {
     setSearchInput(val);
@@ -155,6 +211,14 @@ const ShopPage = () => {
                 className="w-full px-4 py-3 pl-12 bg-white/10 border border-white/20 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:border-accent"
               />
               <Search className="absolute left-4 top-3.5 w-5 h-5 text-gray-400" />
+              <button
+                type="button"
+                onClick={handleAISearch}
+                disabled={aiSearchLoading || !searchInput.trim()}
+                className="absolute right-2 top-2 px-3 py-1.5 bg-accent text-white text-xs rounded-md hover:bg-accent/90 disabled:opacity-60"
+              >
+                {aiSearchLoading ? 'Thinking...' : 'AI Search'}
+              </button>
               {autocompleteResults.length > 0 && (
                 <div className="absolute top-full mt-1 w-full bg-dark-navy border border-white/20 rounded-lg shadow-xl z-50 max-h-60 overflow-y-auto">
                   {autocompleteResults.map((p) => (
@@ -174,10 +238,49 @@ const ShopPage = () => {
                 </div>
               )}
             </form>
+            {aiSuggestions.length > 0 && (
+              <div className="mt-3 flex flex-wrap gap-2 max-w-3xl">
+                {aiSuggestions.map((suggestion) => (
+                  <button
+                    key={suggestion}
+                    type="button"
+                    onClick={() => {
+                      setSearchInput(suggestion);
+                      dispatch(searchProductsWithAI({ userInput: suggestion }));
+                    }}
+                    className="px-3 py-1 text-xs rounded-full bg-white/10 hover:bg-white/20 transition"
+                  >
+                    {suggestion}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
         </div>
 
         <div className="max-w-7xl mx-auto px-4 py-8">
+          {/* Recommended products */}
+          {recommended.length > 0 && (
+            <div className="mb-8">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-2xl font-semibold">Recommended for you</h2>
+                {recommendationsLoading && <span className="text-xs text-gray-400">Updating...</span>}
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                {recommended.slice(0, 4).map((product) => (
+                  <ProductCard
+                    key={product.id || product._id}
+                    product={{ ...product, _id: product.id || product._id }}
+                    onAddToCart={handleAddToCart}
+                    onWishlist={handleWishlist}
+                    isWishlisted={wishlistIds.includes(product.id || product._id)}
+                    navigate={navigate}
+                  />
+                ))}
+              </div>
+            </div>
+          )}
+
           {/* Filter bar */}
           <div className="flex items-center justify-between mb-6">
             <div className="flex items-center gap-4">

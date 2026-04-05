@@ -119,6 +119,7 @@ const LocationsPage = () => {
   const [selectedGym, setSelectedGym] = useState(null);
   const [detailModal, setDetailModal] = useState(false);
   const [searchQuery, setSearchQuery] = useState(searchParams.get('search') || '');
+  const [geoError, setGeoError] = useState('');
   const [filters, setFilters] = useState({
     state: '',
     openNow: false,
@@ -128,29 +129,32 @@ const LocationsPage = () => {
 
   // Geolocation
   const handleGeolocation = () => {
+    setGeoError('');
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
         (position) => {
           const { latitude, longitude } = position.coords;
           setUserLocation({ lat: latitude, lng: longitude });
-          
+
           // Update distances
           const updatedGyms = gyms.map((gym) => {
             const distance = Math.sqrt(
               Math.pow(gym.lat - latitude, 2) + Math.pow(gym.lng - longitude, 2)
             ) * 69; // Convert to miles
-            return { ...gym, distance: distance.toFixed(1) };
+            return { ...gym, distance: Number(distance.toFixed(1)) };
           });
           setGyms(updatedGyms);
         },
-        () => alert('Unable to get your location')
+        () => setGeoError('Unable to access your location. Please allow location access and try again.')
       );
+    } else {
+      setGeoError('Geolocation is not supported by your browser.');
     }
   };
 
   // Filter gyms
   useEffect(() => {
-    let filtered = gyms;
+    let filtered = [...gyms];
 
     if (searchQuery) {
       filtered = filtered.filter((gym) =>
@@ -171,7 +175,7 @@ const LocationsPage = () => {
 
     // Sort
     if (filters.sort === 'distance') {
-      filtered.sort((a, b) => a.distance - b.distance);
+      filtered.sort((a, b) => Number(a.distance) - Number(b.distance));
     } else if (filters.sort === 'rating') {
       filtered.sort((a, b) => b.rating - a.rating);
     }
@@ -318,6 +322,9 @@ const LocationsPage = () => {
               Use My Location
             </Button>
           </motion.div>
+          {geoError && (
+            <p className="mt-3 text-sm text-red-300">{geoError}</p>
+          )}
         </div>
       </section>
 

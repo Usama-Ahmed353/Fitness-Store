@@ -13,13 +13,13 @@ import { useTranslation } from 'react-i18next';
 export const useLanguage = () => {
   const { t, i18n } = useTranslation();
 
-  const setLanguage = (lang) => {
-    i18n.changeLanguage(lang);
+  const setLanguage = () => {
+    i18n.changeLanguage('en');
   };
 
-  const language = i18n.language || 'en';
-  const isSpanish = language.startsWith('es');
-  const isEnglish = language.startsWith('en');
+  const language = 'en';
+  const isSpanish = false;
+  const isEnglish = true;
 
   return {
     t,

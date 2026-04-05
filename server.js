@@ -29,6 +29,7 @@ const cartRoutes = require('./routes/cart.routes');
 const orderRoutes = require('./routes/order.routes');
 const wishlistRoutes = require('./routes/wishlist.routes');
 const chatRoutes = require('./routes/chat.routes');
+const aiRoutes = require('./routes/ai.routes');
 
 // Import Socket.io handlers
 const socketHandlers = require('./socket/handlers');
@@ -41,9 +42,20 @@ const { authorize } = require('./middleware/roleCheck');
 // Initialize app
 const app = express();
 const server = http.createServer(app);
+
+const allowedOrigins = [
+  process.env.FRONTEND_URL || 'http://localhost:5173',
+  'http://localhost:5173',
+  'http://127.0.0.1:5173',
+  'http://localhost:5174',
+  'http://127.0.0.1:5174',
+];
+
+const normalizedAllowedOrigins = [...new Set(allowedOrigins.filter(Boolean))];
+
 const io = socketIO(server, {
   cors: {
-    origin: process.env.FRONTEND_URL || 'http://localhost:5173',
+    origin: normalizedAllowedOrigins,
     credentials: true,
   },
 });
@@ -57,7 +69,7 @@ app.set('trust proxy', 1);
 // CORS Configuration
 app.use(
   cors({
-    origin: process.env.FRONTEND_URL || 'http://localhost:5173',
+    origin: normalizedAllowedOrigins,
     credentials: true,
   })
 );
@@ -117,6 +129,7 @@ app.get('/', (req, res) => {
       orders: '/api/orders',
       wishlist: '/api/wishlist',
       chat: '/api/chat',
+      ai: '/api/ai',
       webhooks: '/api/webhooks',
       health: '/api/health'
     },
@@ -141,6 +154,7 @@ app.use('/api/cart', cartRoutes);
 app.use('/api/orders', orderRoutes);
 app.use('/api/wishlist', wishlistRoutes);
 app.use('/api/chat', chatRoutes);
+app.use('/api/ai', aiRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {

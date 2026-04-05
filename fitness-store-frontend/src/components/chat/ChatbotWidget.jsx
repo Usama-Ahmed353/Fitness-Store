@@ -74,6 +74,26 @@ const BotDataRenderer = ({ data, onSuggestion }) => {
         </div>
       )}
 
+      {/* Order tracking timeline */}
+      {data.timeline?.length > 0 && (
+        <div className="space-y-1.5">
+          {data.timeline.slice(-4).map((step, idx) => (
+            <div key={`${step.status}-${idx}`} className="flex items-start gap-2 px-2 py-1.5 bg-white/10 rounded-lg text-xs">
+              <span className="mt-1 inline-block w-2 h-2 rounded-full bg-accent" />
+              <div>
+                <p className="capitalize font-medium">{step.status}</p>
+                {step.note && <p className="text-gray-400">{step.note}</p>}
+                {step.timestamp && (
+                  <p className="text-[10px] text-gray-500">
+                    {new Date(step.timestamp).toLocaleString()}
+                  </p>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
       {/* Suggestions */}
       {data.suggestions?.length > 0 && (
         <div className="flex flex-wrap gap-1 mt-1">

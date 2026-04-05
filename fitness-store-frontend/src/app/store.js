@@ -22,6 +22,9 @@ import cartReducer from './slices/cartSlice';
 import orderReducer from './slices/orderSlice';
 import wishlistReducer from './slices/wishlistSlice';
 import chatReducer from './slices/chatSlice';
+import { setProductStoreRef } from './slices/productSlice';
+import { setCartStoreRef } from './slices/cartSlice';
+import { setChatStoreRef } from './slices/chatSlice';
 
 // Create a localStorage wrapper that works in all environments
 const storage = {
@@ -95,5 +98,9 @@ export const store = configureStore({
       },
     }),
 });
+
+  setProductStoreRef(store);
+  setCartStoreRef(store);
+  setChatStoreRef(store);
 
 export const persistor = persistStore(store);

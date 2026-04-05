@@ -1,7 +1,10 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import axios from 'axios';
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api';
+const runtimeHost =
+  typeof window !== 'undefined' ? window.location.hostname : 'localhost';
+const API_BASE_URL =
+  import.meta.env.VITE_API_BASE_URL || `http://${runtimeHost}:5001/api`;
 
 // Create axios instance
 const apiClient = axios.create({

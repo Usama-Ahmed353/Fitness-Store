@@ -392,8 +392,8 @@ const SettingsPage = () => {
                   <select
                     value={settings.preferences.language}
                     onChange={(e) => {
-                      handleSettingChange('preferences', 'language', e.target.value);
-                      setLanguage(e.target.value);
+                      handleSettingChange('preferences', 'language', 'en');
+                      setLanguage('en');
                     }}
                     className={`w-full p-3 rounded-lg border focus:outline-none focus:ring-2 focus:ring-accent ${
                       isDark
@@ -402,9 +402,6 @@ const SettingsPage = () => {
                     }`}
                   >
                     <option value="en">English</option>
-                    <option value="es">Español</option>
-                    <option value="fr">Français</option>
-                    <option value="de">Deutsch</option>
                   </select>
                 </div>
               </div>
