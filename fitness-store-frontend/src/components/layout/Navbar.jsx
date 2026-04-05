@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Menu, X, ChevronDown, Moon, Sun } from 'lucide-react';
+import { Menu, X, ChevronDown, Moon, Sun, ShoppingBag, ShoppingCart } from 'lucide-react';
+import { useSelector } from 'react-redux';
 import Button from '../ui/Button';
 import { useTheme } from '../../context/ThemeContext';
 import { useLanguage } from '../../hooks/useLanguage';
@@ -16,6 +17,9 @@ const Navbar = () => {
   const { isDark, toggleTheme } = useTheme();
   const { t, setLanguage, language } = useLanguage();
 
+  const { items: cartItems } = useSelector((state) => state.cart || { items: [] });
+  const cartCount = cartItems?.length || 0;
+
   // Scroll detection
   useEffect(() => {
     const handleScroll = () => {
@@ -26,6 +30,7 @@ const Navbar = () => {
   }, []);
 
   const navLinks = [
+    { key: 'shop', i18nKey: 'navbar.shop' },
     { key: 'locations', i18nKey: 'navbar.findGym' },
     { key: 'classes', i18nKey: 'navbar.exploreClasses' },
     { key: 'training', i18nKey: 'navbar.startTraining' },
@@ -33,6 +38,7 @@ const Navbar = () => {
   ];
 
   const paths = {
+    shop: '/shop',
     locations: '/locations',
     classes: '/classes',
     training: '/training',
@@ -204,6 +210,26 @@ const Navbar = () => {
               >
                 {t('navbar.viewPlans')}
               </Button>
+
+              {/* Cart Button */}
+              <motion.button
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={() => navigate('/cart')}
+                className={`relative p-2 rounded-lg transition-colors ${
+                  isDark
+                    ? 'bg-gray-800/50 text-gray-300 hover:text-accent hover:bg-gray-700/50'
+                    : 'bg-gray-100 text-gray-700 hover:text-accent hover:bg-gray-200'
+                }`}
+                aria-label="Shopping cart"
+              >
+                <ShoppingCart size={20} />
+                {cartCount > 0 && (
+                  <span className="absolute -top-1 -right-1 bg-accent text-white text-xs w-5 h-5 rounded-full flex items-center justify-center font-bold">
+                    {cartCount > 9 ? '9+' : cartCount}
+                  </span>
+                )}
+              </motion.button>
 
               {/* Login Button */}
               <Button

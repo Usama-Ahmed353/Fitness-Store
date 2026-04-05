@@ -12,7 +12,7 @@ const Payment = require('../models/Payment');
 const checkAdmin = async (req, res, next) => {
   try {
     const user = await User.findById(req.userId);
-    if (user && user.role === 'admin') {
+    if (user && (user.role === 'admin' || user.role === 'super_admin')) {
       next();
     } else {
       res.status(403).json({
@@ -267,6 +267,33 @@ router.delete('/users/:userId', verifyToken, checkAdmin, async (req, res) => {
       message: 'Error deleting user',
       error: error.message,
     });
+  }
+});
+
+/**
+ * Update user role or status
+ * PATCH /api/admin/users/:userId
+ */
+router.patch('/users/:userId', verifyToken, checkAdmin, async (req, res) => {
+  try {
+    const { role, isActive } = req.body;
+    const updates = {};
+    if (role) updates.role = role;
+    if (typeof isActive === 'boolean') updates.isActive = isActive;
+
+    const user = await User.findByIdAndUpdate(
+      req.params.userId,
+      updates,
+      { new: true, runValidators: true }
+    ).select('-password -refreshToken');
+
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'User not found' });
+    }
+
+    res.status(200).json({ success: true, data: user });
+  } catch (error) {
+    res.status(500).json({ success: false, message: 'Error updating user', error: error.message });
   }
 });
 

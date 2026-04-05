@@ -23,6 +23,11 @@ const paymentRoutes = require('./routes/payment.routes');
 const webhookRoutes = require('./routes/webhook.routes');
 const notificationRoutes = require('./routes/notification.routes');
 const adminRoutes = require('./routes/admin.routes');
+const productRoutes = require('./routes/product.routes');
+const cartRoutes = require('./routes/cart.routes');
+const orderRoutes = require('./routes/order.routes');
+const wishlistRoutes = require('./routes/wishlist.routes');
+const chatRoutes = require('./routes/chat.routes');
 
 // Import Socket.io handlers
 const socketHandlers = require('./socket/handlers');
@@ -37,7 +42,7 @@ const app = express();
 const server = http.createServer(app);
 const io = socketIO(server, {
   cors: {
-    origin: process.env.FRONTEND_URL || 'http://localhost:3000',
+    origin: process.env.FRONTEND_URL || 'http://localhost:5173',
     credentials: true,
   },
 });
@@ -51,7 +56,7 @@ app.set('trust proxy', 1);
 // CORS Configuration
 app.use(
   cors({
-    origin: process.env.FRONTEND_URL || 'http://localhost:3000',
+    origin: process.env.FRONTEND_URL || 'http://localhost:5173',
     credentials: true,
   })
 );
@@ -106,6 +111,11 @@ app.get('/', (req, res) => {
       payments: '/api/payments',
       notifications: '/api/notifications',
       admin: '/api/admin',
+      products: '/api/products',
+      cart: '/api/cart',
+      orders: '/api/orders',
+      wishlist: '/api/wishlist',
+      chat: '/api/chat',
       webhooks: '/api/webhooks',
       health: '/api/health'
     },
@@ -125,6 +135,11 @@ app.use('/api/search', searchRoutes);
 app.use('/api/payments', paymentRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/products', productRoutes);
+app.use('/api/cart', cartRoutes);
+app.use('/api/orders', orderRoutes);
+app.use('/api/wishlist', wishlistRoutes);
+app.use('/api/chat', chatRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {

@@ -1,26 +1,191 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
+import { Helmet } from 'react-helmet-async';
+import {
+  Users, Package, ShoppingCart, DollarSign, TrendingUp,
+  ArrowRight, Clock, Truck, CheckCircle, XCircle, Eye
+} from 'lucide-react';
+import axios from 'axios';
+import { useSelector } from 'react-redux';
+
+const API = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api';
 
 const AdminDashboard = () => {
+  const navigate = useNavigate();
+  const { accessToken } = useSelector((s) => s.auth);
+  const [dashData, setDashData] = useState(null);
+  const [orderData, setOrderData] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const headers = { Authorization: `Bearer ${accessToken}` };
+    Promise.all([
+      axios.get(`${API}/admin/analytics`, { headers }).catch(() => ({ data: { data: null } })),
+      axios.get(`${API}/orders/admin/analytics`, { headers }).catch(() => ({ data: { data: null } })),
+    ]).then(([adminRes, orderRes]) => {
+      setDashData(adminRes.data?.data || null);
+      setOrderData(orderRes.data?.data || null);
+      setLoading(false);
+    });
+  }, [accessToken]);
+
+  const metrics = dashData?.metrics || {};
+  const statusCounts = orderData?.statusCounts || {};
+
+  const kpiCards = [
+    { label: 'Total Users', value: metrics.totalUsers || 0, icon: Users, color: 'from-blue-500 to-blue-700', link: '/admin/members' },
+    { label: 'Total Orders', value: orderData?.totalOrders || 0, icon: ShoppingCart, color: 'from-purple-500 to-purple-700', link: '/admin/orders' },
+    { label: 'Revenue', value: `$${(orderData?.totalRevenue || 0).toLocaleString()}`, icon: DollarSign, color: 'from-green-500 to-green-700', link: '/admin/orders' },
+    { label: 'Products', value: '—', icon: Package, color: 'from-orange-500 to-orange-700', link: '/admin/products' },
+  ];
+
+  const orderStatusCards = [
+    { label: 'Pending', value: statusCounts.pending || 0, icon: Clock, color: 'text-yellow-400', bg: 'bg-yellow-400/10' },
+    { label: 'Processing', value: statusCounts.processing || 0, icon: Package, color: 'text-blue-400', bg: 'bg-blue-400/10' },
+    { label: 'Shipped', value: statusCounts.shipped || 0, icon: Truck, color: 'text-purple-400', bg: 'bg-purple-400/10' },
+    { label: 'Delivered', value: statusCounts.delivered || 0, icon: CheckCircle, color: 'text-green-400', bg: 'bg-green-400/10' },
+    { label: 'Canceled', value: statusCounts.canceled || 0, icon: XCircle, color: 'text-red-400', bg: 'bg-red-400/10' },
+  ];
+
+  const quickLinks = [
+    { label: 'Manage Products', desc: 'Add, edit, or remove products with SEO', path: '/admin/products', icon: Package },
+    { label: 'Manage Orders', desc: 'Track and update order statuses', path: '/admin/orders', icon: ShoppingCart },
+    { label: 'User Management', desc: 'View and manage all users', path: '/admin/members', icon: Users },
+  ];
+
   return (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      transition={{ duration: 0.5 }}
-      className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12"
-    >
-      <h1 className="text-4xl font-bold text-white mb-8">Admin Dashboard</h1>
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
-        {['Users', 'Gyms', 'Classes', 'Revenue'].map((card, idx) => (
-          <div
-            key={idx}
-            className="bg-dark-navy/50 border border-accent/20 rounded-xl p-6 text-light-bg/70 text-center h-40 flex items-center justify-center"
-          >
-            <p>{card} Coming Soon</p>
+    <>
+      <Helmet><title>Admin Dashboard | FitStore</title><meta name="robots" content="noindex" /></Helmet>
+      <div className="min-h-screen bg-dark-navy text-white p-6">
+        <div className="max-w-7xl mx-auto">
+          <div className="mb-8">
+            <h1 className="text-3xl font-bold">Admin Dashboard</h1>
+            <p className="text-gray-400 mt-1">Overview of your e-commerce store</p>
           </div>
-        ))}
+
+          {loading ? (
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+              {Array.from({ length: 4 }).map((_, i) => (
+                <div key={i} className="bg-white/5 rounded-xl h-28 animate-pulse" />
+              ))}
+            </div>
+          ) : (
+            <>
+              {/* KPI Cards */}
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+                {kpiCards.map((kpi) => (
+                  <motion.div
+                    key={kpi.label}
+                    whileHover={{ scale: 1.02 }}
+                    onClick={() => navigate(kpi.link)}
+                    className="bg-white/5 rounded-xl p-5 cursor-pointer hover:bg-white/10 transition"
+                  >
+                    <div className="flex items-center gap-3 mb-3">
+                      <div className={`p-2.5 rounded-lg bg-gradient-to-br ${kpi.color}`}>
+                        <kpi.icon className="w-5 h-5 text-white" />
+                      </div>
+                      <span className="text-sm text-gray-400">{kpi.label}</span>
+                    </div>
+                    <p className="text-2xl font-bold">{kpi.value}</p>
+                  </motion.div>
+                ))}
+              </div>
+
+              {/* Order Status Breakdown */}
+              <div className="mb-8">
+                <h2 className="text-xl font-bold mb-4">Order Status</h2>
+                <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+                  {orderStatusCards.map((card) => (
+                    <div key={card.label} className="bg-white/5 rounded-xl p-4 text-center">
+                      <div className={`w-10 h-10 rounded-full mx-auto mb-2 flex items-center justify-center ${card.bg}`}>
+                        <card.icon className={`w-5 h-5 ${card.color}`} />
+                      </div>
+                      <p className="text-xl font-bold">{card.value}</p>
+                      <p className="text-xs text-gray-400">{card.label}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Recent Orders */}
+              {orderData?.recentOrders?.length > 0 && (
+                <div className="mb-8">
+                  <div className="flex items-center justify-between mb-4">
+                    <h2 className="text-xl font-bold">Recent Orders</h2>
+                    <button onClick={() => navigate('/admin/orders')} className="text-accent text-sm flex items-center gap-1 hover:underline">
+                      View All <ArrowRight className="w-4 h-4" />
+                    </button>
+                  </div>
+                  <div className="bg-white/5 rounded-xl overflow-hidden">
+                    <table className="w-full">
+                      <thead>
+                        <tr className="border-b border-white/10">
+                          <th className="text-left px-6 py-3 text-sm text-gray-400">Order</th>
+                          <th className="text-left px-6 py-3 text-sm text-gray-400">Customer</th>
+                          <th className="text-left px-6 py-3 text-sm text-gray-400">Total</th>
+                          <th className="text-left px-6 py-3 text-sm text-gray-400">Status</th>
+                          <th className="text-right px-6 py-3 text-sm text-gray-400">Date</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {orderData.recentOrders.map((order) => (
+                          <tr key={order._id} className="border-b border-white/5 hover:bg-white/5">
+                            <td className="px-6 py-3 font-mono text-sm text-accent">{order.orderNumber}</td>
+                            <td className="px-6 py-3 text-sm">
+                              {order.user?.firstName} {order.user?.lastName}
+                            </td>
+                            <td className="px-6 py-3 text-sm font-medium">${order.total?.toFixed(2)}</td>
+                            <td className="px-6 py-3">
+                              <span className={`text-xs px-2 py-1 rounded capitalize ${
+                                order.status === 'delivered' ? 'bg-green-400/20 text-green-400' :
+                                order.status === 'shipped' ? 'bg-purple-400/20 text-purple-400' :
+                                order.status === 'processing' ? 'bg-blue-400/20 text-blue-400' :
+                                order.status === 'canceled' ? 'bg-red-400/20 text-red-400' :
+                                'bg-yellow-400/20 text-yellow-400'
+                              }`}>
+                                {order.status}
+                              </span>
+                            </td>
+                            <td className="px-6 py-3 text-right text-sm text-gray-400">
+                              {new Date(order.createdAt).toLocaleDateString()}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+
+              {/* Quick Links */}
+              <div>
+                <h2 className="text-xl font-bold mb-4">Quick Actions</h2>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  {quickLinks.map((link) => (
+                    <motion.div
+                      key={link.label}
+                      whileHover={{ scale: 1.02 }}
+                      onClick={() => navigate(link.path)}
+                      className="bg-white/5 rounded-xl p-6 cursor-pointer hover:bg-white/10 transition flex items-center gap-4"
+                    >
+                      <div className="p-3 bg-accent/20 rounded-lg">
+                        <link.icon className="w-6 h-6 text-accent" />
+                      </div>
+                      <div>
+                        <p className="font-semibold">{link.label}</p>
+                        <p className="text-sm text-gray-400">{link.desc}</p>
+                      </div>
+                      <ArrowRight className="w-5 h-5 text-gray-600 ml-auto" />
+                    </motion.div>
+                  ))}
+                </div>
+              </div>
+            </>
+          )}
+        </div>
       </div>
-    </motion.div>
+    </>
   );
 };
 

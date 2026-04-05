@@ -17,6 +17,11 @@ import trainerReducer from './slices/trainerSlice';
 import notificationReducer from './slices/notificationSlice';
 import uiReducer from './slices/uiSlice';
 import loadingReducer from './slices/loadingSlice';
+import productReducer from './slices/productSlice';
+import cartReducer from './slices/cartSlice';
+import orderReducer from './slices/orderSlice';
+import wishlistReducer from './slices/wishlistSlice';
+import chatReducer from './slices/chatSlice';
 
 // Create a localStorage wrapper that works in all environments
 const storage = {
@@ -77,6 +82,11 @@ export const store = configureStore({
     notifications: notificationReducer,
     ui: uiReducer,
     loading: loadingReducer,
+    products: productReducer,
+    cart: cartReducer,
+    orders: orderReducer,
+    wishlist: wishlistReducer,
+    chat: chatReducer,
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware({

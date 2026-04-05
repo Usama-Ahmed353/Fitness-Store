@@ -292,11 +292,11 @@ async function handleInvoicePaymentFailed(invoice) {
 
     // Update member status
     const member = await Member.findOne({
-      'stripeInfo.subscriptionId': invoice.subscription,
+      stripeSubscriptionId: invoice.subscription,
     });
 
     if (member) {
-      member.status = 'past_due';
+      member.membershipStatus = 'past_due';
       member.lastPaymentFailureDate = new Date();
       await member.save();
 
