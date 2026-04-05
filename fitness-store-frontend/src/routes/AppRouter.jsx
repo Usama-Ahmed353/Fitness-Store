@@ -48,6 +48,7 @@ const OrderDetailPage = React.lazy(() => import('../pages/shop/OrderDetailPage')
 const WishlistPage = React.lazy(() => import('../pages/shop/WishlistPage'));
 const AdminProductsPage = React.lazy(() => import('../pages/admin/ProductsPage'));
 const AdminOrdersPage = React.lazy(() => import('../pages/admin/OrdersPage'));
+const AdminMembersPage = React.lazy(() => import('../pages/admin/MembersPage'));
 
 // Protected Route Component
 const ProtectedRoute = ({ children, requiredRole = null }) => {
@@ -57,8 +58,11 @@ const ProtectedRoute = ({ children, requiredRole = null }) => {
     return <Navigate to="/login" replace />;
   }
 
-  if (requiredRole && user?.role !== requiredRole) {
-    return <Navigate to="/" replace />;
+  if (requiredRole) {
+    const roles = Array.isArray(requiredRole) ? requiredRole : [requiredRole];
+    if (!roles.includes(user?.role)) {
+      return <Navigate to="/" replace />;
+    }
   }
 
   return children;
@@ -360,11 +364,33 @@ const AppRouter = () => {
 
         {/* Admin Protected Routes */}
         <Route
-          path="/admin/dashboard"
+          path="/admin"
           element={
-            <ProtectedRoute requiredRole="admin">
+            <ProtectedRoute requiredRole={['admin', 'super_admin']}>
               <AdminLayout>
                 <AdminDashboard />
+              </AdminLayout>
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/admin/dashboard"
+          element={
+            <ProtectedRoute requiredRole={['admin', 'super_admin']}>
+              <AdminLayout>
+                <AdminDashboard />
+              </AdminLayout>
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/admin/members"
+          element={
+            <ProtectedRoute requiredRole={['admin', 'super_admin']}>
+              <AdminLayout>
+                <AdminMembersPage />
               </AdminLayout>
             </ProtectedRoute>
           }
@@ -458,7 +484,7 @@ const AppRouter = () => {
         <Route
           path="/admin/products"
           element={
-            <ProtectedRoute requiredRole="admin">
+            <ProtectedRoute requiredRole={['admin', 'super_admin']}>
               <AdminLayout>
                 <AdminProductsPage />
               </AdminLayout>
@@ -469,7 +495,7 @@ const AppRouter = () => {
         <Route
           path="/admin/orders"
           element={
-            <ProtectedRoute requiredRole="admin">
+            <ProtectedRoute requiredRole={['admin', 'super_admin']}>
               <AdminLayout>
                 <AdminOrdersPage />
               </AdminLayout>

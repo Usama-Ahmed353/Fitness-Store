@@ -171,3 +171,77 @@ exports.clearCart = async (req, res, next) => {
     next(error);
   }
 };
+
+// @desc    Apply coupon code
+// @route   POST /api/cart/coupon
+exports.applyCoupon = async (req, res, next) => {
+  try {
+    const { code } = req.body;
+    if (!code) {
+      return res.status(400).json({ success: false, message: 'Coupon code is required' });
+    }
+
+    // Predefined coupons (in production, store in DB)
+    const coupons = {
+      WELCOME10: { discount: 10, minOrder: 0, description: '10% off your order' },
+      FIT20: { discount: 20, minOrder: 50, description: '20% off orders over $50' },
+      SAVE15: { discount: 15, minOrder: 30, description: '15% off orders over $30' },
+      SUMMER25: { discount: 25, minOrder: 100, description: '25% off orders over $100' },
+    };
+
+    const coupon = coupons[code.toUpperCase()];
+    if (!coupon) {
+      return res.status(400).json({ success: false, message: 'Invalid coupon code' });
+    }
+
+    const cart = await Cart.findOne({ user: req.user.id }).populate(
+      'items.product',
+      'title slug price discount images stock isActive'
+    );
+
+    if (!cart || cart.items.length === 0) {
+      return res.status(400).json({ success: false, message: 'Cart is empty' });
+    }
+
+    const subtotal = cart.items.reduce((sum, item) => sum + item.price * item.quantity, 0);
+    if (subtotal < coupon.minOrder) {
+      return res.status(400).json({
+        success: false,
+        message: `Minimum order of $${coupon.minOrder} required for this coupon`,
+      });
+    }
+
+    cart.couponCode = code.toUpperCase();
+    cart.couponDiscount = coupon.discount;
+    await cart.save();
+
+    const populated = await Cart.findOne({ user: req.user.id }).populate(
+      'items.product',
+      'title slug price discount images stock isActive'
+    );
+
+    res.json({
+      success: true,
+      message: `Coupon applied: ${coupon.description}`,
+      data: populated,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @desc    Remove coupon
+// @route   DELETE /api/cart/coupon
+exports.removeCoupon = async (req, res, next) => {
+  try {
+    const cart = await Cart.findOneAndUpdate(
+      { user: req.user.id },
+      { couponCode: null, couponDiscount: 0 },
+      { new: true }
+    ).populate('items.product', 'title slug price discount images stock isActive');
+
+    res.json({ success: true, message: 'Coupon removed', data: cart });
+  } catch (error) {
+    next(error);
+  }
+};

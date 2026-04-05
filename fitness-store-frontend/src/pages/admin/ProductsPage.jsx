@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { Helmet } from 'react-helmet-async';
+// eslint-disable-next-line no-unused-vars
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Package, Plus, Edit3, Trash2, Search, ChevronLeft, ChevronRight,
@@ -92,7 +93,7 @@ const ProductsPage = () => {
 
     let result;
     if (editingProduct) {
-      result = await dispatch(updateProduct({ id: editingProduct._id, data }));
+      result = await dispatch(updateProduct({ id: editingProduct._id, updates: data }));
     } else {
       result = await dispatch(createProduct(data));
     }

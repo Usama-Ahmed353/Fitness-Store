@@ -359,3 +359,55 @@ exports.getRecentlyViewed = async (req, res, next) => {
     next(error);
   }
 };
+
+// @desc    Get "Customers Also Bought" recommendations
+// @route   GET /api/products/:id/also-bought
+exports.getAlsoBought = async (req, res, next) => {
+  try {
+    const Order = require('../models/Order');
+    const productId = req.params.id;
+
+    // Find orders containing this product
+    const ordersWithProduct = await Order.find(
+      { 'items.product': productId },
+      { items: 1 }
+    ).limit(50).lean();
+
+    // Collect co-occurring product IDs
+    const coProducts = {};
+    ordersWithProduct.forEach((order) => {
+      order.items.forEach((item) => {
+        const pid = item.product.toString();
+        if (pid !== productId) {
+          coProducts[pid] = (coProducts[pid] || 0) + 1;
+        }
+      });
+    });
+
+    // Sort by frequency and get top 6
+    const topIds = Object.entries(coProducts)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 6)
+      .map(([id]) => id);
+
+    let products;
+    if (topIds.length > 0) {
+      products = await Product.find({ _id: { $in: topIds }, isActive: true }).lean();
+    } else {
+      // Fallback: return trending products in same category
+      const currentProduct = await Product.findById(productId).lean();
+      products = await Product.find({
+        _id: { $ne: productId },
+        isActive: true,
+        category: currentProduct?.category,
+      })
+        .sort('-ratings.average')
+        .limit(6)
+        .lean();
+    }
+
+    res.json({ success: true, data: products });
+  } catch (error) {
+    next(error);
+  }
+};

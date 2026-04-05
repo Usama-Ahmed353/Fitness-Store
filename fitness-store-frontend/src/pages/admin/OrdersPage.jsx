@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { Helmet } from 'react-helmet-async';
+// eslint-disable-next-line no-unused-vars
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Package, Search, ChevronLeft, ChevronRight, X, Eye,
@@ -23,7 +24,7 @@ const STATUS_CONFIG = {
 
 const OrdersPage = () => {
   const dispatch = useDispatch();
-  const { allOrders, allOrdersPagination, allOrdersLoading, analytics } = useSelector((s) => s.orders);
+  const { allOrders, adminPagination, loading: allOrdersLoading, analytics } = useSelector((s) => s.orders);
   const [page, setPage] = useState(1);
   const [statusFilter, setStatusFilter] = useState('');
   const [selectedOrder, setSelectedOrder] = useState(null);
@@ -47,13 +48,13 @@ const OrdersPage = () => {
     }
   };
 
-  const totalPages = allOrdersPagination?.pages || 1;
+  const totalPages = adminPagination?.pages || 1;
 
   const statCards = [
     { label: 'Total Revenue', value: `$${(analytics?.totalRevenue || 0).toLocaleString()}`, icon: DollarSign, color: 'from-green-500 to-green-700' },
-    { label: 'Total Orders', value: analytics?.totalOrders || allOrdersPagination?.total || 0, icon: Package, color: 'from-blue-500 to-blue-700' },
-    { label: 'Avg Order Value', value: `$${(analytics?.averageOrderValue || 0).toFixed(2)}`, icon: BarChart3, color: 'from-purple-500 to-purple-700' },
-    { label: 'Pending Orders', value: analytics?.statusBreakdown?.find(s => s._id === 'pending')?.count || 0, icon: Clock, color: 'from-yellow-500 to-yellow-700' },
+    { label: 'Total Orders', value: analytics?.totalOrders || adminPagination?.total || 0, icon: Package, color: 'from-blue-500 to-blue-700' },
+    { label: 'Avg Order Value', value: `$${(analytics?.totalOrders ? (analytics?.totalRevenue / analytics?.totalOrders) : 0).toFixed(2)}`, icon: BarChart3, color: 'from-purple-500 to-purple-700' },
+    { label: 'Pending Orders', value: analytics?.statusCounts?.pending || 0, icon: Clock, color: 'from-yellow-500 to-yellow-700' },
   ];
 
   return (

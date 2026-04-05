@@ -20,6 +20,7 @@ router.get('/admin/all', verifyToken, authorize('admin', 'super_admin'), product
 router.get('/', productController.getProducts);
 router.get('/:slug', productController.getProductBySlug);
 router.get('/:slug/related', productController.getRelated);
+router.get('/:id/also-bought', productController.getAlsoBought);
 
 // Admin CRUD
 router.post(
