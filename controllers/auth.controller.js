@@ -38,25 +38,27 @@ exports.register = async (req, res, next) => {
     const emailToken = user.generateEmailVerificationToken();
     await user.save({ validateBeforeSave: false });
 
-    // Send verification email
+    // Send verification email (non-blocking)
     const verificationUrl = `${process.env.FRONTEND_URL}/verify-email/${emailToken}`;
-    await sendEmail({
+    sendEmail({
       email: user.email,
       subject: 'Email Verification',
       message: `Please verify your email by clicking on this link: ${verificationUrl}`,
-    });
+    }).catch((err) => console.log('Email send failed (non-critical):', err.message));
 
     // Return response with tokens
-    const token = user.generateJWT();
+    const accessToken = user.generateJWT();
     const refreshToken = user.generateRefreshToken();
 
     res.status(201).json({
       success: true,
       message: 'User registered successfully. Please verify your email.',
-      token,
+      accessToken,
       refreshToken,
       user: {
         id: user._id,
+        firstName: user.firstName,
+        lastName: user.lastName,
         name: `${user.firstName} ${user.lastName}`,
         email: user.email,
         role: user.role,
@@ -108,7 +110,7 @@ exports.login = async (req, res, next) => {
     await user.save();
 
     // Create tokens
-    const token = user.generateJWT();
+    const accessToken = user.generateJWT();
     const refreshToken = user.generateRefreshToken();
 
     // Set cookies
@@ -118,16 +120,18 @@ exports.login = async (req, res, next) => {
       sameSite: 'Strict',
     };
 
-    res.cookie('token', token, { ...cookieOptions, maxAge: 7 * 24 * 60 * 60 * 1000 });
+    res.cookie('token', accessToken, { ...cookieOptions, maxAge: 7 * 24 * 60 * 60 * 1000 });
     res.cookie('refreshToken', refreshToken, { ...cookieOptions, maxAge: 30 * 24 * 60 * 60 * 1000 });
 
     res.status(200).json({
       success: true,
       message: 'Logged in successfully',
-      token,
+      accessToken,
       refreshToken,
       user: {
         id: user._id,
+        firstName: user.firstName,
+        lastName: user.lastName,
         name: `${user.firstName} ${user.lastName}`,
         email: user.email,
         role: user.role,
@@ -171,7 +175,7 @@ exports.refreshToken = async (req, res, next) => {
 
     res.status(200).json({
       success: true,
-      token: newToken,
+      accessToken: newToken,
       refreshToken: newRefreshToken,
     });
   } catch (error) {
@@ -255,11 +259,11 @@ exports.forgotPassword = async (req, res, next) => {
     await user.save({ validateBeforeSave: false });
 
     const resetUrl = `${process.env.FRONTEND_URL}/reset-password/${resetToken}`;
-    await sendEmail({
+    sendEmail({
       email: user.email,
       subject: 'Password Reset',
       message: `Click here to reset your password: ${resetUrl}`,
-    });
+    }).catch((err) => console.log('Password reset email failed:', err.message));
 
     res.status(200).json({
       success: true,

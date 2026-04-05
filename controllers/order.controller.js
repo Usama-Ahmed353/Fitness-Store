@@ -1,7 +1,7 @@
 const Order = require('../models/Order');
 const Cart = require('../models/Cart');
 const Product = require('../models/Product');
-const stripe = require('stripe')(process.env.STRIPE_API_KEY);
+const stripe = require('stripe')(process.env.STRIPE_API_KEY || 'sk_test_placeholder');
 
 // @desc    Create order from cart
 // @route   POST /api/orders

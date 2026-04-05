@@ -198,7 +198,7 @@ export const getMeAsync = createAsyncThunk(
   async (_, { rejectWithValue }) => {
     try {
       const response = await apiClient.get('/auth/me');
-      return response.data;
+      return response.data.user;
     } catch (error) {
       return rejectWithValue('Failed to fetch user');
     }
@@ -209,7 +209,7 @@ export const verifyTokenAsync = createAsyncThunk(
   'auth/verifyTokenAsync',
   async (token, { rejectWithValue }) => {
     try {
-      const response = await apiClient.get('/auth/verify', {
+      const response = await apiClient.get('/auth/me', {
         headers: { Authorization: `Bearer ${token}` },
       });
       return response.data;

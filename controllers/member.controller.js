@@ -1,5 +1,5 @@
 const { validationResult } = require('express-validator');
-const stripe = require('stripe')(process.env.STRIPE_API_KEY);
+const stripe = require('stripe')(process.env.STRIPE_API_KEY || 'sk_test_placeholder');
 const Member = require('../models/Member');
 const User = require('../models/User');
 const Gym = require('../models/Gym');

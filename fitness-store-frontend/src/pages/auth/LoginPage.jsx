@@ -4,7 +4,7 @@ import { useDispatch, useSelector } from 'react-redux';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { motion } from 'framer-motion';
+import { motion } from 'framer-motion'; // eslint-disable-line no-unused-vars
 import { Eye, EyeOff, LogIn, ArrowRight } from 'lucide-react';
 import { loginAsync } from '../../app/slices/authSlice';
 import Button from '../../components/ui/Button';
@@ -18,15 +18,15 @@ const loginSchema = z.object({
 });
 
 const demoAccounts = [
-  { role: 'Member', email: 'member@demo.com', password: 'Demo1234' },
-  { role: 'Admin', email: 'admin@demo.com', password: 'Admin1234' },
-  { role: 'Gym Owner', email: 'owner@demo.com', password: 'Owner1234' },
+  { role: 'Member', email: 'member@fitnessstore.com', password: 'Member@123' },
+  { role: 'Admin', email: 'admin@fitnessstore.com', password: 'Admin@123' },
+  { role: 'Gym Owner', email: 'gymowner@fitnessstore.com', password: 'Gym@1234' },
 ];
 
 const LoginPage = () => {
   const navigate = useNavigate();
   const dispatch = useDispatch();
-  const { isAuthenticated, isLoading, error } = useSelector((state) => state.auth);
+  const { isAuthenticated, isLoading, error, user } = useSelector((state) => state.auth);
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
 
@@ -44,10 +44,19 @@ const LoginPage = () => {
   });
 
   useEffect(() => {
-    if (isAuthenticated) {
-      navigate('/member/dashboard');
+    if (isAuthenticated && user) {
+      const role = user.role;
+      if (role === 'admin' || role === 'super_admin') {
+        navigate('/admin/dashboard');
+      } else if (role === 'gym_owner') {
+        navigate('/gym-owner/dashboard');
+      } else if (role === 'trainer') {
+        navigate('/trainer/dashboard');
+      } else {
+        navigate('/member/dashboard');
+      }
     }
-  }, [isAuthenticated, navigate]);
+  }, [isAuthenticated, user, navigate]);
 
   const onSubmit = async (data) => {
     try {
@@ -61,7 +70,7 @@ const LoginPage = () => {
         toast.success('Welcome back!');
       }
     } catch (err) {
-      toast.error(err.message || 'Login failed');
+      toast.error(typeof err === 'string' ? err : (err?.message || 'Login failed'));
     }
   };
 

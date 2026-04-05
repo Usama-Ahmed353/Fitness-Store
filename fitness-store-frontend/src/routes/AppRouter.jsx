@@ -400,7 +400,7 @@ const AppRouter = () => {
         <Route
           path="/gym-owner/dashboard"
           element={
-            <ProtectedRoute requiredRole="gym-owner">
+            <ProtectedRoute requiredRole="gym_owner">
               <GymOwnerLayout>
                 <GymOwnerDashboard />
               </GymOwnerLayout>
