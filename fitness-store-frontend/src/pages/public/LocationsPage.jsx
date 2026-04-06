@@ -22,8 +22,7 @@ import Rating from '../../components/ui/Rating';
 import Modal from '../../components/ui/Modal';
 import SEO from '../../components/seo/SEO';
 
-const GOOGLE_MAPS_API_KEY =
-  import.meta.env.VITE_GOOGLE_MAPS_API_KEY || 'AIzaSyBmy-ceVB2K1ALGhV2vAHOjL8nIYSXVnwo';
+const GOOGLE_MAPS_API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
 
 const DEFAULT_CENTER = { lat: 40.7413, lng: -73.9892 };
 const DEFAULT_ZOOM = 12;
