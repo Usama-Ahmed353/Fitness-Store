@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, Link, useSearchParams } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { motion } from 'framer-motion'; // eslint-disable-line no-unused-vars
 import { Eye, EyeOff, LogIn, ArrowRight } from 'lucide-react';
-import { loginAsync, clearAuth } from '../../app/slices/authSlice';
+import { loginAsync } from '../../app/slices/authSlice';
 import Button from '../../components/ui/Button';
 import Input from '../../components/ui/Input';
 import Card from '../../components/ui/Card';
@@ -25,16 +25,38 @@ const demoAccounts = [
 
 const LoginPage = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const dispatch = useDispatch();
-  const { isLoading, error } = useSelector((state) => state.auth);
+  const { isLoading, error, isAuthenticated, user } = useSelector((state) => state.auth);
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
 
-  // Clear any existing session when visiting the login page
-  // so the user always sees the login form
+  // If already authenticated, don't keep the user on the login page.
   useEffect(() => {
-    dispatch(clearAuth());
-  }, [dispatch]);
+    if (!isAuthenticated || !user) return;
+
+    const role = user.role;
+    const redirect = searchParams.get('redirect');
+    const bookClass = searchParams.get('bookClass');
+
+    if (redirect && role === 'member') {
+      const redirectUrl = bookClass
+        ? `${redirect}?bookClass=${encodeURIComponent(bookClass)}`
+        : redirect;
+      navigate(redirectUrl, { replace: true });
+      return;
+    }
+
+    if (role === 'admin' || role === 'super_admin') {
+      navigate('/admin/dashboard', { replace: true });
+    } else if (role === 'gym_owner') {
+      navigate('/gym-owner/dashboard', { replace: true });
+    } else if (role === 'trainer') {
+      navigate('/trainer/dashboard', { replace: true });
+    } else {
+      navigate('/member/dashboard', { replace: true });
+    }
+  }, [isAuthenticated, user, navigate, searchParams]);
 
   const {
     register,
@@ -60,7 +82,15 @@ const LoginPage = () => {
       if (result) {
         toast.success('Welcome back!');
         const role = result.user?.role;
-        if (role === 'admin' || role === 'super_admin') {
+        const redirect = searchParams.get('redirect');
+        const bookClass = searchParams.get('bookClass');
+
+        if (redirect && role === 'member') {
+          const redirectUrl = bookClass
+            ? `${redirect}?bookClass=${encodeURIComponent(bookClass)}`
+            : redirect;
+          navigate(redirectUrl);
+        } else if (role === 'admin' || role === 'super_admin') {
           navigate('/admin/dashboard');
         } else if (role === 'gym_owner') {
           navigate('/gym-owner/dashboard');

@@ -37,7 +37,7 @@ const orderSchema = new mongoose.Schema(
     },
     paymentMethod: {
       type: String,
-      enum: ['stripe', 'paypal'],
+      enum: ['stripe', 'paypal', 'dev_simulated'],
       default: 'stripe',
     },
     paymentStatus: {
@@ -84,7 +84,7 @@ const orderSchema = new mongoose.Schema(
 );
 
 // Generate order number before saving
-orderSchema.pre('save', async function (next) {
+orderSchema.pre('save', async function () {
   if (!this.orderNumber) {
     const count = await mongoose.model('Order').countDocuments();
     this.orderNumber = `FS-${Date.now().toString(36).toUpperCase()}-${(count + 1)
@@ -94,7 +94,6 @@ orderSchema.pre('save', async function (next) {
   if (this.isNew) {
     this.statusHistory.push({ status: this.status, note: 'Order created' });
   }
-  next();
 });
 
 orderSchema.index({ createdAt: -1 });

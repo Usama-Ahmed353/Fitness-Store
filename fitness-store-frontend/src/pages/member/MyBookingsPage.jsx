@@ -1,5 +1,6 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useSelector } from 'react-redux';
+import axios from 'axios';
 import { motion, AnimatePresence } from 'framer-motion';
 import toast from 'react-hot-toast';
 import { useTheme } from '../../context/ThemeContext';
@@ -34,6 +35,9 @@ const MyBookingsPage = () => {
   const { isDark } = useTheme();
   const { t } = useLanguage();
   const { profile } = useSelector((state) => state.member);
+  const { accessToken } = useSelector((state) => state.auth);
+  const runtimeHost = typeof window !== 'undefined' ? window.location.hostname : 'localhost';
+  const API = import.meta.env.VITE_API_BASE_URL || `http://${runtimeHost}:5001/api`;
 
   // Tabs and modals
   const [activeTab, setActiveTab] = useState('upcoming');
@@ -41,6 +45,8 @@ const MyBookingsPage = () => {
   const [showReviewModal, setShowReviewModal] = useState(false);
   const [selectedBooking, setSelectedBooking] = useState(null);
   const [imageErrors, setImageErrors] = useState({});
+  const [bookings, setBookings] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [reviews, setReviews] = useState({
     1: { rating: 5, text: 'Amazing class! Sarah is a great instructor.' },
   });
@@ -64,107 +70,34 @@ const MyBookingsPage = () => {
     return { Icon: Dumbbell, gradient: 'from-slate-600 to-slate-800' };
   };
 
-  // Mock booking data
-  const bookings = [
-    {
-      id: 'booking-1',
-      classId: 1,
-      className: 'Morning Spin',
-      instructor: 'Sarah Johnson',
-      date: new Date(Date.now() + 86400000).toISOString().split('T')[0],
-      time: '06:00',
-      duration: 45,
-      gym: 'Downtown Studio',
-      bookedAt: new Date(Date.now() - 7 * 86400000).toISOString(),
-      status: 'upcoming', // upcoming, past, canceled, waitlist
-      attended: true,
-      difficulty: 'Intermediate',
-      image: 'https://via.placeholder.com/300x200?text=Spin',
-    },
-    {
-      id: 'booking-2',
-      classId: 2,
-      className: 'Yoga Flow',
-      instructor: 'Maria Garcia',
-      date: new Date(Date.now() + 2 * 86400000).toISOString().split('T')[0],
-      time: '07:00',
-      duration: 60,
-      gym: 'Downtown Studio',
-      bookedAt: new Date(Date.now() - 5 * 86400000).toISOString(),
-      status: 'upcoming',
-      attended: null,
-      difficulty: 'Beginner',
-      image: 'https://via.placeholder.com/300x200?text=Yoga',
-    },
-    {
-      id: 'booking-3',
-      classId: 3,
-      className: 'HIIT Blast',
-      instructor: 'Alex Martinez',
-      date: new Date(Date.now() - 7 * 86400000).toISOString().split('T')[0],
-      time: '18:00',
-      duration: 50,
-      gym: 'Downtown Studio',
-      bookedAt: new Date(Date.now() - 14 * 86400000).toISOString(),
-      status: 'past',
-      attended: true,
-      difficulty: 'Advanced',
-      image: 'https://via.placeholder.com/300x200?text=HIIT',
-    },
-    {
-      id: 'booking-4',
-      classId: 4,
-      className: 'Pilates Core',
-      instructor: 'Jennifer Lee',
-      date: new Date(Date.now() - 14 * 86400000).toISOString().split('T')[0],
-      time: '09:00',
-      duration: 55,
-      gym: 'Downtown Studio',
-      bookedAt: new Date(Date.now() - 21 * 86400000).toISOString(),
-      status: 'past',
-      attended: true,
-      difficulty: 'Intermediate',
-      image: 'https://via.placeholder.com/300x200?text=Pilates',
-    },
-    {
-      id: 'booking-5',
-      classId: 5,
-      className: 'Zumba Party',
-      instructor: 'Carlos Ruiz',
-      date: new Date(Date.now() - 21 * 86400000).toISOString().split('T')[0],
-      time: '17:00',
-      duration: 45,
-      gym: 'Downtown Studio',
-      bookedAt: new Date(Date.now() - 30 * 86400000).toISOString(),
-      status: 'canceled',
-      attended: false,
-      difficulty: 'Beginner',
-      image: 'https://via.placeholder.com/300x200?text=Zumba',
-      canceledAt: new Date(Date.now() - 18 * 86400000).toISOString(),
-      cancelReason: 'Canceled within 48hr - Lost 50% credit',
-    },
-    {
-      id: 'booking-6',
-      classId: 6,
-      className: 'Boxing Training',
-      instructor: 'Mike Thompson',
-      date: new Date(Date.now() + 5 * 86400000).toISOString().split('T')[0],
-      time: '19:00',
-      duration: 60,
-      gym: 'Downtown Studio',
-      bookedAt: new Date(Date.now() - 3 * 86400000).toISOString(),
-      status: 'waitlist',
-      waitlistPosition: 3,
-      attended: null,
-      difficulty: 'Intermediate',
-      image: 'https://via.placeholder.com/300x200?text=Boxing',
-    },
-  ];
+  useEffect(() => {
+    const loadBookings = async () => {
+      if (!accessToken) {
+        setBookings([]);
+        setLoading(false);
+        return;
+      }
+
+      try {
+        setLoading(true);
+        const headers = { Authorization: `Bearer ${accessToken}` };
+        const { data } = await axios.get(`${API}/members/me/bookings`, { headers });
+        setBookings(data?.data || []);
+      } catch (error) {
+        toast.error(error.response?.data?.message || 'Failed to load bookings');
+        setBookings([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadBookings();
+  }, [API, accessToken]);
 
   // Filter bookings by tab
   const filteredBookings = useMemo(() => {
     return bookings.filter((b) => b.status === activeTab);
-  }, [activeTab]);
+  }, [activeTab, bookings]);
 
   // Calculate time until class
   const getTimeUntilClass = (dateStr, timeStr) => {
@@ -204,7 +137,7 @@ PRODID:-//CrunchFit Pro//EN
 CALSCALE:GREGORIAN
 METHOD:PUBLISH
 BEGIN:VEVENT
-UID:${booking.id}@crunchfit.com
+UID:${booking._id || booking.id}@crunchfit.com
 DTSTAMP:${new Date().toISOString().replace(/[-:]/g, '').split('.')[0]}Z
 DTSTART:${startDate}
 DTEND:${endDate}
@@ -236,13 +169,41 @@ END:VCALENDAR`;
 
   // Confirm cancellation
   const handleConfirmCancellation = (refundType) => {
-    if (selectedBooking) {
-      toast.success(
-        t('member.bookings.cancellationSuccess') || 'Class canceled successfully'
-      );
-      setShowCancellationModal(false);
-      setSelectedBooking(null);
-    }
+    if (!selectedBooking || !accessToken) return;
+
+    const cancelBooking = async () => {
+      try {
+        const headers = { Authorization: `Bearer ${accessToken}` };
+        await axios.delete(`${API}/classes/${selectedBooking.classId}/cancel-booking`, { headers });
+
+        setBookings((prev) =>
+          prev.map((booking) =>
+            booking._id === selectedBooking._id
+              ? {
+                  ...booking,
+                  status: 'canceled',
+                  canceledAt: new Date().toISOString(),
+                  cancelReason:
+                    refundType === 'full'
+                      ? 'Canceled with full refund'
+                      : 'Canceled by member',
+                }
+              : booking
+          )
+        );
+
+        toast.success(
+          t('member.bookings.cancellationSuccess') || 'Class canceled successfully'
+        );
+      } catch (error) {
+        toast.error(error.response?.data?.message || 'Failed to cancel class booking');
+      } finally {
+        setShowCancellationModal(false);
+        setSelectedBooking(null);
+      }
+    };
+
+    cancelBooking();
   };
 
   // Open review modal
@@ -268,11 +229,11 @@ END:VCALENDAR`;
     const timeRemaining = getTimeUntilClass(booking.date, booking.time);
     const canCancel = isCancellationAllowed(booking.date, booking.time);
     const { Icon, gradient } = getBookingVisual(booking.className);
-    const showImage = Boolean(booking.image && !imageErrors[booking.id]);
+    const showImage = Boolean(booking.image && !imageErrors[booking._id]);
 
     return (
       <motion.div
-        key={booking.id}
+        key={booking._id}
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
       >
@@ -289,7 +250,7 @@ END:VCALENDAR`;
                 onError={() =>
                   setImageErrors((prev) => ({
                     ...prev,
-                    [booking.id]: true,
+                    [booking._id]: true,
                   }))
                 }
                 className="w-full md:w-48 h-32 object-cover"
@@ -599,7 +560,13 @@ END:VCALENDAR`;
               animate={{ opacity: 1 }}
               className="space-y-4"
             >
-              {filteredBookings.length === 0 ? (
+              {loading ? (
+                <Card variant={isDark ? 'dark' : 'default'}>
+                  <div className="flex items-center justify-center py-12">
+                    <p className={isDark ? 'text-gray-300' : 'text-gray-700'}>Loading bookings...</p>
+                  </div>
+                </Card>
+              ) : filteredBookings.length === 0 ? (
                 <Card variant={isDark ? 'dark' : 'default'}>
                   <div className="flex items-center justify-center py-12">
                     <div className="text-center">

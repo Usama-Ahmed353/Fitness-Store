@@ -57,7 +57,7 @@ export const QuickActions = () => {
     {
       icon: Calendar,
       label: t('member.actions.bookClass'),
-      onClick: () => navigate('/classes'),
+      onClick: () => navigate('/member/classes'),
     },
     {
       icon: Users,
@@ -67,10 +67,7 @@ export const QuickActions = () => {
     {
       icon: CheckCircle,
       label: t('member.actions.checkIn'),
-      onClick: () => {
-        // TODO: Direct check-in from dashboard
-        console.log('Check in');
-      },
+      onClick: () => navigate('/member/checkin'),
     },
     {
       icon: BarChart,
@@ -85,10 +82,7 @@ export const QuickActions = () => {
     {
       icon: ShoppingBag,
       label: t('member.actions.shop'),
-      onClick: () => {
-        // TODO: Shop feature (coming soon)
-        console.log('Shop');
-      },
+      onClick: () => navigate('/shop'),
     },
   ];
 

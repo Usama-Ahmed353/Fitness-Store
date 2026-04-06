@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { Heart, Users, Zap, Target, Award, Globe, MapPin, Star, Activity } from 'lucide-react';
@@ -6,11 +6,29 @@ import Button from '../../components/ui/Button';
 import Card from '../../components/ui/Card';
 import Badge from '../../components/ui/Badge';
 import SEO from '../../components/seo/SEO';
+import { fetchContentByKey } from '../../services/contentService';
 
 const AboutPage = () => {
   const navigate = useNavigate();
   const appUrl = import.meta.env.VITE_APP_URL || 'http://localhost:5173';
-  const values = [
+  const [contentData, setContentData] = useState(null);
+
+  useEffect(() => {
+    let mounted = true;
+    fetchContentByKey('about-page')
+      .then((content) => {
+        if (mounted && content) setContentData(content);
+      })
+      .catch(() => {
+        // Keep static defaults when content entry is not found.
+      });
+
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  const values = contentData?.values || [
     {
       icon: Heart,
       title: 'Positivity',
@@ -31,7 +49,7 @@ const AboutPage = () => {
     },
   ];
 
-  const timeline = [
+  const timeline = contentData?.timeline || [
     {
       year: '2010',
       title: 'The Beginning',
@@ -70,7 +88,7 @@ const AboutPage = () => {
     },
   ];
 
-  const pressLogos = [
+  const pressLogos = contentData?.pressLogos || [
     'Forbes',
     'Time Magazine',
     'Women\'s Health',
@@ -79,7 +97,7 @@ const AboutPage = () => {
     'Variety',
   ];
 
-  const stats = [
+  const stats = contentData?.stats || [
     { number: '250+', label: 'Gym Locations' },
     { number: '2M+', label: 'Active Members' },
     { number: '500+', label: 'Workout Videos' },

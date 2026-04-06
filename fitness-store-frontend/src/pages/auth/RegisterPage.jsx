@@ -144,13 +144,16 @@ const RegisterPage = () => {
 
   const onSubmitStep3 = async (data) => {
     try {
+      const normalizedAccountType =
+        accountType === 'gym-owner' ? 'gym_owner' : accountType;
+
       const payload = {
         firstName: form2.getValues('firstName'),
         lastName: form2.getValues('lastName'),
         email: form2.getValues('email'),
         phone: form2.getValues('phone'),
         password: form2.getValues('password'),
-        accountType,
+        accountType: normalizedAccountType,
         ...data,
       };
 
@@ -172,7 +175,7 @@ const RegisterPage = () => {
         navigate(`/verify-email?email=${encodeURIComponent(payload.email)}`);
       }
     } catch (err) {
-      toast.error(err.message || 'Registration failed');
+      toast.error(typeof err === 'string' ? err : (err?.message || 'Registration failed'));
     }
   };
 

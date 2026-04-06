@@ -1,4 +1,6 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
+import { useSelector } from 'react-redux';
+import axios from 'axios';
 import { motion } from 'framer-motion';
 import toast from 'react-hot-toast';
 import { useTheme } from '../../context/ThemeContext';
@@ -16,83 +18,60 @@ import { Card } from '../../components/ui/Card';
 const MySessionsPage = () => {
   const { isDark } = useTheme();
   const { t } = useLanguage();
+  const { accessToken } = useSelector((state) => state.auth);
+  const runtimeHost = typeof window !== 'undefined' ? window.location.hostname : 'localhost';
+  const API = import.meta.env.VITE_API_BASE_URL || `http://${runtimeHost}:5001/api`;
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [selectedSession, setSelectedSession] = useState(null);
   const [showNotes, setShowNotes] = useState(false);
   const [showReview, setShowReview] = useState(false);
+  const [sessions, setSessions] = useState([]);
+  const [loading, setLoading] = useState(true);
 
-  // Mock sessions data
-  const sessions = [
-    {
-      id: 1,
-      trainerId: 1,
-      trainerName: 'Alex Martinez',
-      date: new Date(2026, 2, 25, 14, 0),
-      duration: 60,
-      type: 'in-person',
-      gym: 'Downtown Studio',
-      status: 'upcoming',
-      notes: null,
-    },
-    {
-      id: 2,
-      trainerId: 2,
-      trainerName: 'Sarah Johnson',
-      date: new Date(2026, 2, 28, 10, 0),
-      duration: 45,
-      type: 'video',
-      gym: 'Virtual',
-      status: 'upcoming',
-      notes: null,
-    },
-    {
-      id: 3,
-      trainerId: 1,
-      trainerName: 'Alex Martinez',
-      date: new Date(2026, 2, 18, 16, 0),
-      duration: 60,
-      type: 'in-person',
-      gym: 'Downtown Studio',
-      status: 'completed',
-      notes: {
-        exercises: [
-          { name: 'Bench Press', sets: 4, reps: '8-10', weight: '185 lbs' },
-          { name: 'Incline Dumbbell Press', sets: 3, reps: '10-12', weight: '75 lbs' },
-        ],
-        nextSessionPlan: 'Focus on chest and triceps with increased weight',
-        feedback: 'Great form today! Push more weight next time.',
-      },
-    },
-    {
-      id: 4,
-      trainerId: 3,
-      trainerName: 'Mike Thompson',
-      date: new Date(2026, 2, 11, 17, 0),
-      duration: 50,
-      type: 'in-person',
-      gym: 'Downtown Studio',
-      status: 'completed',
-      notes: {
-        exercises: [
-          { name: 'Boxing Combinations', sets: 5, reps: 'rounds', weight: 'N/A' },
-          { name: 'Heavy Bag Work', sets: 3, reps: '3 min', weight: 'N/A' },
-        ],
-        nextSessionPlan: 'Practice footwork and speed training',
-        feedback: 'Excellent cardio fitness! Your stamina improved significantly.',
-      },
-    },
-    {
-      id: 5,
-      trainerId: 2,
-      trainerName: 'Sarah Johnson',
-      date: new Date(2026, 2, 5, 9, 0),
-      duration: 60,
-      type: 'video',
-      gym: 'Virtual',
-      status: 'canceled',
-      notes: null,
-    },
-  ];
+  useEffect(() => {
+    const loadSessions = async () => {
+      if (!accessToken) {
+        setSessions([]);
+        setLoading(false);
+        return;
+      }
+
+      try {
+        setLoading(true);
+        const headers = { Authorization: `Bearer ${accessToken}` };
+        const { data } = await axios.get(`${API}/trainers/sessions/my`, { headers });
+        const mapped = (data?.data || []).map((session) => {
+          const trainerUser = session.trainerId?.userId;
+          return {
+            _id: session._id,
+            trainerId: session.trainerId?._id,
+            trainerName: trainerUser
+              ? `${trainerUser.firstName || ''} ${trainerUser.lastName || ''}`.trim()
+              : 'Trainer',
+            date: new Date(session.scheduledDate),
+            duration: session.duration || 60,
+            type: 'in-person',
+            gym: session.trainerId?.gymId?.name || 'Gym',
+            status:
+              session.status === 'scheduled'
+                ? 'upcoming'
+                : session.status === 'completed'
+                  ? 'completed'
+                  : 'canceled',
+            notes: null,
+          };
+        });
+        setSessions(mapped);
+      } catch (error) {
+        toast.error(error.response?.data?.message || 'Failed to load trainer sessions');
+        setSessions([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadSessions();
+  }, [API, accessToken]);
 
   // Get calendar days
   const getDaysInMonth = (date) => new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate();
@@ -120,7 +99,7 @@ const MySessionsPage = () => {
   const filteredSessions = useMemo(() => {
     if (activeTab === 'all') return sessions;
     return sessions.filter((s) => s.status === activeTab);
-  }, [activeTab]);
+  }, [activeTab, sessions]);
 
   // Handle rebook
   const handleRebook = (session) => {
@@ -306,7 +285,13 @@ const MySessionsPage = () => {
               {/* Sessions List */}
               <div className="lg:col-span-2">
                 <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-4">
-                  {filteredSessions.length === 0 ? (
+                  {loading ? (
+                    <Card>
+                      <div className="p-8 text-center">
+                        <p className={isDark ? 'text-gray-300' : 'text-gray-700'}>Loading sessions...</p>
+                      </div>
+                    </Card>
+                  ) : filteredSessions.length === 0 ? (
                     <Card>
                       <div className="p-8 text-center">
                         <AlertCircle
@@ -326,7 +311,7 @@ const MySessionsPage = () => {
                   ) : (
                     filteredSessions.map((session, idx) => (
                       <motion.div
-                        key={session.id}
+                        key={session._id}
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ delay: idx * 0.05 }}

@@ -14,6 +14,8 @@ import {
   CheckCircle2,
   Loader2,
   ArrowLeft,
+  Plus,
+  UserPlus,
 } from 'lucide-react';
 import {
   ResponsiveContainer,
@@ -39,6 +41,36 @@ const GymOwnerDashboard = () => {
   const [creatingGym, setCreatingGym] = useState(false);
   const [createError, setCreateError] = useState('');
   const [createSuccess, setCreateSuccess] = useState('');
+  const [classesLive, setClassesLive] = useState([]);
+  const [trainersLive, setTrainersLive] = useState([]);
+  const [opsLoading, setOpsLoading] = useState(false);
+  const [opsError, setOpsError] = useState('');
+  const [classSaving, setClassSaving] = useState(false);
+  const [trainerSaving, setTrainerSaving] = useState(false);
+  const [opsSuccess, setOpsSuccess] = useState('');
+  const [classForm, setClassForm] = useState({
+    name: '',
+    category: 'strength',
+    duration: 60,
+    maxCapacity: 20,
+    dayOfWeek: 'monday',
+    time: '09:00',
+    difficulty: 'intermediate',
+    location: '',
+    instructorId: '',
+  });
+  const [trainerForm, setTrainerForm] = useState({
+    firstName: '',
+    lastName: '',
+    email: '',
+    password: '',
+    phone: '',
+    hourlyRate: 50,
+    specializations: '',
+    certifications: '',
+    yearsExperience: 1,
+    bio: '',
+  });
   const [gymForm, setGymForm] = useState({
     name: '',
     email: user?.email || '',
@@ -46,6 +78,26 @@ const GymOwnerDashboard = () => {
     city: '',
     street: '',
   });
+
+  const loadOwnerOperationalData = async (gymId, token = accessToken) => {
+    if (!gymId || !token) return;
+    try {
+      setOpsLoading(true);
+      setOpsError('');
+
+      const [clsRes, trainerRes] = await Promise.all([
+        axios.get(`${API}/classes`, { params: { gymId, limit: 100 } }),
+        axios.get(`${API}/trainers`, { params: { gymId, limit: 100 } }),
+      ]);
+
+      setClassesLive(clsRes.data?.data || []);
+      setTrainersLive(trainerRes.data?.data || []);
+    } catch (err) {
+      setOpsError(err?.response?.data?.message || 'Failed to load classes/trainers');
+    } finally {
+      setOpsLoading(false);
+    }
+  };
 
   useEffect(() => {
     const load = async () => {
@@ -62,6 +114,9 @@ const GymOwnerDashboard = () => {
           headers: { Authorization: `Bearer ${accessToken}` },
         });
         setDashboard(data.data || null);
+        if (data?.data?.gym?._id) {
+          await loadOwnerOperationalData(data.data.gym._id, accessToken);
+        }
       } catch (err) {
         setError(err?.response?.data?.message || 'Failed to load dashboard data');
       } finally {
@@ -119,10 +174,111 @@ const GymOwnerDashboard = () => {
         headers: { Authorization: `Bearer ${accessToken}` },
       });
       setDashboard(data.data || null);
+      if (data?.data?.gym?._id) {
+        await loadOwnerOperationalData(data.data.gym._id, accessToken);
+      }
     } catch (err) {
       setCreateError(err?.response?.data?.message || 'Unable to create gym profile right now.');
     } finally {
       setCreatingGym(false);
+    }
+  };
+
+  const handleCreateClass = async (e) => {
+    e.preventDefault();
+    if (!accessToken || !dashboard?.gym?._id) return;
+
+    try {
+      setClassSaving(true);
+      setOpsError('');
+      setOpsSuccess('');
+
+      await axios.post(
+        `${API}/classes`,
+        {
+          gymId: dashboard.gym._id,
+          name: classForm.name,
+          category: classForm.category,
+          instructorId: classForm.instructorId || undefined,
+          duration: Number(classForm.duration),
+          maxCapacity: Number(classForm.maxCapacity),
+          schedule: {
+            dayOfWeek: classForm.dayOfWeek,
+            time: classForm.time,
+            recurring: true,
+          },
+          location: classForm.location,
+          difficulty: classForm.difficulty,
+        },
+        { headers: { Authorization: `Bearer ${accessToken}` } }
+      );
+
+      setOpsSuccess('Class created successfully');
+      setClassForm({
+        name: '',
+        category: 'strength',
+        duration: 60,
+        maxCapacity: 20,
+        dayOfWeek: 'monday',
+        time: '09:00',
+        difficulty: 'intermediate',
+        location: '',
+        instructorId: '',
+      });
+      await loadOwnerOperationalData(dashboard.gym._id, accessToken);
+    } catch (err) {
+      setOpsError(err?.response?.data?.message || 'Failed to create class');
+    } finally {
+      setClassSaving(false);
+    }
+  };
+
+  const handleCreateTrainer = async (e) => {
+    e.preventDefault();
+    if (!accessToken || !dashboard?.gym?._id) return;
+
+    try {
+      setTrainerSaving(true);
+      setOpsError('');
+      setOpsSuccess('');
+
+      await axios.post(
+        `${API}/trainers`,
+        {
+          gymId: dashboard.gym._id,
+          firstName: trainerForm.firstName,
+          lastName: trainerForm.lastName,
+          email: trainerForm.email,
+          password: trainerForm.password,
+          phone: trainerForm.phone,
+          hourlyRate: Number(trainerForm.hourlyRate),
+          specializations: trainerForm.specializations,
+          certifications: trainerForm.certifications,
+          yearsExperience: Number(trainerForm.yearsExperience),
+          bio: trainerForm.bio,
+          availability: { days: ['monday', 'wednesday', 'friday'], timeSlots: ['09:00', '17:00'] },
+        },
+        { headers: { Authorization: `Bearer ${accessToken}` } }
+      );
+
+      setOpsSuccess('Trainer created successfully');
+      setTrainerForm({
+        firstName: '',
+        lastName: '',
+        email: '',
+        password: '',
+        phone: '',
+        hourlyRate: 50,
+        specializations: '',
+        certifications: '',
+        yearsExperience: 1,
+        bio: '',
+      });
+      await loadOwnerOperationalData(dashboard.gym._id, accessToken);
+    } catch (err) {
+      setOpsError(err?.response?.data?.message || 'Failed to create trainer');
+    } finally {
+      setTrainerSaving(false);
     }
   };
 
@@ -333,6 +489,66 @@ const GymOwnerDashboard = () => {
               </ResponsiveContainer>
             </div>
           </div>
+
+          <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 mt-6">
+            <div className="bg-white/5 border border-white/10 rounded-xl p-5">
+              <h3 className="font-semibold mb-4 flex items-center gap-2"><Plus className="w-5 h-5 text-accent" /> Add Live Class</h3>
+              <form onSubmit={handleCreateClass} className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <input required value={classForm.name} onChange={(e) => setClassForm((p) => ({ ...p, name: e.target.value }))} placeholder="Class name" className="rounded-lg border border-white/15 bg-black/20 px-3 py-2 text-sm" />
+                <select value={classForm.category} onChange={(e) => setClassForm((p) => ({ ...p, category: e.target.value }))} className="rounded-lg border border-white/15 bg-black/20 px-3 py-2 text-sm">
+                  <option value="strength">Strength</option><option value="cardio">Cardio</option><option value="hiit">HIIT</option><option value="mind_body">Mind Body</option><option value="ride">Ride</option><option value="dance">Dance</option><option value="specialty">Specialty</option>
+                </select>
+                <input type="number" min="15" value={classForm.duration} onChange={(e) => setClassForm((p) => ({ ...p, duration: e.target.value }))} placeholder="Duration" className="rounded-lg border border-white/15 bg-black/20 px-3 py-2 text-sm" />
+                <input type="number" min="1" value={classForm.maxCapacity} onChange={(e) => setClassForm((p) => ({ ...p, maxCapacity: e.target.value }))} placeholder="Max capacity" className="rounded-lg border border-white/15 bg-black/20 px-3 py-2 text-sm" />
+                <input value={classForm.dayOfWeek} onChange={(e) => setClassForm((p) => ({ ...p, dayOfWeek: e.target.value }))} placeholder="Day of week" className="rounded-lg border border-white/15 bg-black/20 px-3 py-2 text-sm" />
+                <input type="time" value={classForm.time} onChange={(e) => setClassForm((p) => ({ ...p, time: e.target.value }))} className="rounded-lg border border-white/15 bg-black/20 px-3 py-2 text-sm" />
+                <select value={classForm.difficulty} onChange={(e) => setClassForm((p) => ({ ...p, difficulty: e.target.value }))} className="rounded-lg border border-white/15 bg-black/20 px-3 py-2 text-sm">
+                  <option value="beginner">Beginner</option><option value="intermediate">Intermediate</option><option value="advanced">Advanced</option>
+                </select>
+                <input value={classForm.location} onChange={(e) => setClassForm((p) => ({ ...p, location: e.target.value }))} placeholder="Location" className="rounded-lg border border-white/15 bg-black/20 px-3 py-2 text-sm" />
+                <select value={classForm.instructorId} onChange={(e) => setClassForm((p) => ({ ...p, instructorId: e.target.value }))} className="md:col-span-2 rounded-lg border border-white/15 bg-black/20 px-3 py-2 text-sm">
+                  <option value="">No instructor</option>
+                  {trainersLive.map((t) => <option key={t._id} value={t._id}>{`${t.userId?.firstName || ''} ${t.userId?.lastName || ''}`.trim() || 'Trainer'}</option>)}
+                </select>
+                <button disabled={classSaving} type="submit" className="md:col-span-2 rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-blue-500 disabled:opacity-70">
+                  {classSaving ? 'Saving class...' : 'Create Class'}
+                </button>
+              </form>
+
+              <div className="mt-4 space-y-2 max-h-56 overflow-auto">
+                {opsLoading ? <p className="text-sm text-gray-400">Loading classes...</p> : classesLive.map((c) => <div key={c._id} className="rounded-lg bg-white/5 p-2 text-sm">{c.name} • {c.schedule?.dayOfWeek || '-'} {c.schedule?.time || ''}</div>)}
+                {!opsLoading && classesLive.length === 0 && <p className="text-sm text-gray-400">No classes yet.</p>}
+              </div>
+            </div>
+
+            <div className="bg-white/5 border border-white/10 rounded-xl p-5">
+              <h3 className="font-semibold mb-4 flex items-center gap-2"><UserPlus className="w-5 h-5 text-accent" /> Add Live Trainer</h3>
+              <form onSubmit={handleCreateTrainer} className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <input required value={trainerForm.firstName} onChange={(e) => setTrainerForm((p) => ({ ...p, firstName: e.target.value }))} placeholder="First name" className="rounded-lg border border-white/15 bg-black/20 px-3 py-2 text-sm" />
+                <input required value={trainerForm.lastName} onChange={(e) => setTrainerForm((p) => ({ ...p, lastName: e.target.value }))} placeholder="Last name" className="rounded-lg border border-white/15 bg-black/20 px-3 py-2 text-sm" />
+                <input required type="email" value={trainerForm.email} onChange={(e) => setTrainerForm((p) => ({ ...p, email: e.target.value }))} placeholder="Email" className="rounded-lg border border-white/15 bg-black/20 px-3 py-2 text-sm" />
+                <input required type="password" value={trainerForm.password} onChange={(e) => setTrainerForm((p) => ({ ...p, password: e.target.value }))} placeholder="Password" className="rounded-lg border border-white/15 bg-black/20 px-3 py-2 text-sm" />
+                <input value={trainerForm.phone} onChange={(e) => setTrainerForm((p) => ({ ...p, phone: e.target.value }))} placeholder="Phone" className="rounded-lg border border-white/15 bg-black/20 px-3 py-2 text-sm" />
+                <input type="number" min="0" value={trainerForm.hourlyRate} onChange={(e) => setTrainerForm((p) => ({ ...p, hourlyRate: e.target.value }))} placeholder="Hourly rate" className="rounded-lg border border-white/15 bg-black/20 px-3 py-2 text-sm" />
+                <input value={trainerForm.specializations} onChange={(e) => setTrainerForm((p) => ({ ...p, specializations: e.target.value }))} placeholder="Specializations (comma separated)" className="md:col-span-2 rounded-lg border border-white/15 bg-black/20 px-3 py-2 text-sm" />
+                <textarea value={trainerForm.bio} onChange={(e) => setTrainerForm((p) => ({ ...p, bio: e.target.value }))} placeholder="Trainer bio" className="md:col-span-2 rounded-lg border border-white/15 bg-black/20 px-3 py-2 text-sm" rows={3} />
+                <button disabled={trainerSaving} type="submit" className="md:col-span-2 rounded-lg bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-emerald-500 disabled:opacity-70">
+                  {trainerSaving ? 'Saving trainer...' : 'Create Trainer'}
+                </button>
+              </form>
+
+              <div className="mt-4 space-y-2 max-h-56 overflow-auto">
+                {opsLoading ? <p className="text-sm text-gray-400">Loading trainers...</p> : trainersLive.map((t) => <div key={t._id} className="rounded-lg bg-white/5 p-2 text-sm">{`${t.userId?.firstName || ''} ${t.userId?.lastName || ''}`.trim() || 'Trainer'} • ${t.hourlyRate || 0}/hr</div>)}
+                {!opsLoading && trainersLive.length === 0 && <p className="text-sm text-gray-400">No trainers yet.</p>}
+              </div>
+            </div>
+          </div>
+
+          {(opsError || opsSuccess) && (
+            <div className={`mt-4 rounded-lg px-3 py-2 text-sm ${opsError ? 'bg-red-500/15 text-red-200 border border-red-500/30' : 'bg-emerald-500/15 text-emerald-200 border border-emerald-500/30'}`}>
+              {opsError || opsSuccess}
+            </div>
+          )}
         </>
       )}
     </div>

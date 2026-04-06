@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useSelector } from 'react-redux';
 import { Swiper, SwiperSlide } from 'swiper/react';
 import { Navigation, Pagination, Autoplay } from 'swiper/modules';
 import {
@@ -215,6 +216,7 @@ const ClassesPage = () => {
   const navigate = useNavigate();
   const appUrl = import.meta.env.VITE_APP_URL || 'http://localhost:5173';
   const [searchParams] = useSearchParams();
+  const { isAuthenticated, accessToken } = useSelector((state) => state.auth);
   const [selectedCategory, setSelectedCategory] = useState(
     searchParams.get('category') || 'All'
   );
@@ -276,7 +278,12 @@ const ClassesPage = () => {
   }, [selectedCategory, searchQuery, filters]);
 
   const handleBookClass = (classId) => {
-    navigate(`/login?redirect=/classes/${classId}`);
+    if (isAuthenticated || accessToken) {
+      navigate(`/member/classes?bookClass=${classId}`);
+      return;
+    }
+
+    navigate(`/login?redirect=/member/classes&bookClass=${classId}`);
   };
 
   // Weekly schedule

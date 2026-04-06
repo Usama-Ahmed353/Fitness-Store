@@ -1,4 +1,5 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
+import axios from 'axios';
 import { useTheme } from '../../context/ThemeContext';
 import { useLanguage } from '../../hooks/useLanguage';
 import MemberLayout from '../../layouts/MemberLayout';
@@ -15,6 +16,7 @@ import {
   X,
 } from 'lucide-react';
 import { Card } from '../../components/ui/Card';
+import toast from 'react-hot-toast';
 
 /**
  * TrainersPage - Browse and book personal trainers
@@ -34,8 +36,8 @@ const TrainersPage = () => {
     gender: 'any',
   });
 
-  // Mock trainer data
-  const trainers = [
+  // Fallback trainer data
+  const fallbackTrainers = [
     {
       id: 1,
       name: 'Alex Martinez',
@@ -255,6 +257,72 @@ const TrainersPage = () => {
       },
     },
   ];
+
+  const [trainers, setTrainers] = useState([]);
+  const [isLoadingTrainers, setIsLoadingTrainers] = useState(true);
+
+  useEffect(() => {
+    const runtimeHost = typeof window !== 'undefined' ? window.location.hostname : 'localhost';
+    const envApi = import.meta.env.VITE_API_BASE_URL;
+
+    const loadTrainers = async () => {
+      setIsLoadingTrainers(true);
+      try {
+        const baseCandidates = [
+          envApi,
+          `http://${runtimeHost}:5001/api`,
+          'http://127.0.0.1:5001/api',
+          'http://localhost:5001/api',
+        ].filter((url, idx, arr) => Boolean(url) && arr.indexOf(url) === idx);
+
+        let loaded = false;
+        for (const baseUrl of baseCandidates) {
+          try {
+            const { data } = await axios.get(`${baseUrl}/trainers`);
+            const mapped = (data?.data || []).map((trainer) => {
+              const user = typeof trainer.userId === 'object' && trainer.userId !== null ? trainer.userId : {};
+              return {
+                id: trainer._id,
+                name: `${user.firstName || ''} ${user.lastName || ''}`.trim() || 'Trainer',
+                photo: user.profilePhoto || 'https://via.placeholder.com/200?text=Trainer',
+                specializations: trainer.specializations || [],
+                rating: Number(trainer.rating || 0),
+                reviewCount: Number(trainer.reviewCount || 0),
+                hourlyRate: Number(trainer.hourlyRate || 0),
+                nextAvailable: 'Check availability',
+                gender: 'any',
+                bio: trainer.bio || 'Certified fitness trainer',
+                videoUrl: trainer.videoIntroUrl || '',
+                certifications: trainer.certifications || [],
+                gallery: trainer.photos || [],
+                reviews: [],
+                availability: trainer.availability || {},
+              };
+            });
+
+            // Always use live DB response, even when empty.
+            setTrainers(mapped);
+            loaded = true;
+            break;
+          } catch (err) {
+            // Try next candidate URL.
+          }
+        }
+
+        if (!loaded) {
+          setTrainers([]);
+          toast.error('Unable to fetch live trainers from backend');
+        }
+      } catch (error) {
+        setTrainers([]);
+        toast.error('Unable to fetch live trainers from backend');
+      } finally {
+        setIsLoadingTrainers(false);
+      }
+    };
+
+    loadTrainers();
+  }, []);
 
   // Filter trainers
   const filteredTrainers = useMemo(() => {
@@ -666,7 +734,17 @@ const TrainersPage = () => {
               animate={{ opacity: 1 }}
               className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
             >
-              {filteredTrainers.length === 0 ? (
+              {isLoadingTrainers ? (
+                <div className={`col-span-full ${isDark ? 'bg-gray-800' : 'bg-white'} rounded-lg p-12 text-center`}>
+                  <p
+                    className={`font-semibold mb-2 ${
+                      isDark ? 'text-white' : 'text-gray-900'
+                    }`}
+                  >
+                    Loading trainers...
+                  </p>
+                </div>
+              ) : filteredTrainers.length === 0 ? (
                 <div className={`col-span-full ${isDark ? 'bg-gray-800' : 'bg-white'} rounded-lg p-12 text-center`}>
                   <p
                     className={`font-semibold mb-2 ${

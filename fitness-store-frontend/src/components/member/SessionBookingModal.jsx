@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
 import toast from 'react-hot-toast';
+import axios from 'axios';
+import { useSelector } from 'react-redux';
 import { useTheme } from '../../context/ThemeContext';
 import { useLanguage } from '../../hooks/useLanguage';
 import { ChevronLeft, ChevronRight, Clock, Video, MapPin, X } from 'lucide-react';
@@ -11,6 +13,9 @@ import { ChevronLeft, ChevronRight, Clock, Video, MapPin, X } from 'lucide-react
 const SessionBookingModal = ({ trainer, onClose }) => {
   const { isDark } = useTheme();
   const { t } = useLanguage();
+  const { accessToken } = useSelector((state) => state.auth);
+  const runtimeHost = typeof window !== 'undefined' ? window.location.hostname : 'localhost';
+  const API = import.meta.env.VITE_API_BASE_URL || `http://${runtimeHost}:5001/api`;
   const [step, setStep] = useState('date'); // date, time, duration, type, notes, payment, confirmation
   const [selectedDate, setSelectedDate] = useState(null);
   const [selectedTime, setSelectedTime] = useState(null);
@@ -18,6 +23,26 @@ const SessionBookingModal = ({ trainer, onClose }) => {
   const [sessionType, setSessionType] = useState('in-person');
   const [notes, setNotes] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+
+  const to24HourTime = (value) => {
+    const input = String(value || '').trim();
+    const ampmMatch = input.match(/^(\d{1,2}):(\d{2})\s*(AM|PM)$/i);
+    if (ampmMatch) {
+      let hh = parseInt(ampmMatch[1], 10);
+      const mm = ampmMatch[2];
+      const suffix = ampmMatch[3].toUpperCase();
+      if (suffix === 'PM' && hh < 12) hh += 12;
+      if (suffix === 'AM' && hh === 12) hh = 0;
+      return `${String(hh).padStart(2, '0')}:${mm}`;
+    }
+
+    const hmMatch = input.match(/^(\d{1,2}):(\d{2})$/);
+    if (hmMatch) {
+      return `${String(parseInt(hmMatch[1], 10)).padStart(2, '0')}:${hmMatch[2]}`;
+    }
+
+    return '';
+  };
 
   const durationOptions = [30, 45, 60, 90];
   const rates = {
@@ -44,7 +69,23 @@ const SessionBookingModal = ({ trainer, onClose }) => {
     const dayIndex = selectedDate.getDay();
     const dayNames = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
     const dayName = dayNames[dayIndex];
-    return trainer.availability[dayName] || [];
+
+    const availability = trainer?.availability || {};
+
+    // Legacy frontend shape: availability[dayName] = ['10:00', '14:00']
+    if (Array.isArray(availability[dayName])) {
+      return availability[dayName];
+    }
+
+    // Backend shape: availability = { days: [...], timeSlots: [...] }
+    const availableDays = Array.isArray(availability.days) ? availability.days : [];
+    const availableSlots = Array.isArray(availability.timeSlots) ? availability.timeSlots : [];
+
+    if (availableDays.includes(dayName)) {
+      return availableSlots;
+    }
+
+    return [];
   };
 
   const timeSlots = getTimeSlots();
@@ -56,15 +97,46 @@ const SessionBookingModal = ({ trainer, onClose }) => {
       return;
     }
 
+    if (!accessToken) {
+      toast.error('Please log in to book a trainer session');
+      return;
+    }
+
+    const trainerId = trainer?.id || trainer?._id;
+    if (!trainerId || !/^[a-f\d]{24}$/i.test(String(trainerId))) {
+      toast.error('This trainer is not synced with live database yet. Please choose a listed trainer profile.');
+      return;
+    }
+
     setIsLoading(true);
-    // Simulate payment processing
-    await new Promise((resolve) => setTimeout(resolve, 1500));
-    
-    toast.success(
-      t('member.trainers.bookingConfirmed') || 'Session booked successfully!'
-    );
-    setStep('confirmation');
-    setIsLoading(false);
+    try {
+      const parsedTime = to24HourTime(selectedTime);
+      const [hours, minutes] = parsedTime.split(':').map((v) => parseInt(v, 10));
+      const scheduledDate = new Date(selectedDate);
+      scheduledDate.setHours(Number.isNaN(hours) ? 9 : hours, Number.isNaN(minutes) ? 0 : minutes, 0, 0);
+
+      const headers = { Authorization: `Bearer ${accessToken}` };
+      await axios.post(
+        `${API}/trainers/${trainerId}/book-session`,
+        {
+          scheduledDate: scheduledDate.toISOString(),
+          duration,
+          notes,
+          sessionType,
+        },
+        { headers }
+      );
+
+      toast.success(
+        t('member.trainers.bookingConfirmed') || 'Session booked successfully!'
+      );
+      setStep('confirmation');
+    } catch (error) {
+      const validationError = error.response?.data?.errors?.[0]?.msg;
+      toast.error(validationError || error.response?.data?.message || 'Failed to book trainer session');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (

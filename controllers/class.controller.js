@@ -26,7 +26,11 @@ exports.getClasses = async (req, res, next) => {
     if (difficulty) query.difficulty = difficulty;
 
     const classes = await Class.find(query)
-      .populate('instructorId', 'firstName lastName rating')
+      .populate({
+        path: 'instructorId',
+        select: 'userId rating',
+        populate: { path: 'userId', select: 'firstName lastName profilePhoto' },
+      })
       .populate('gymId', 'name slug')
       .sort({ 'schedule.time': 1 })
       .skip(skip)
@@ -74,7 +78,11 @@ exports.getClass = async (req, res, next) => {
     const { id } = req.params;
 
     const cls = await Class.findById(id)
-      .populate('instructorId', 'firstName lastName bio rating specializations')
+      .populate({
+        path: 'instructorId',
+        select: 'userId bio rating specializations',
+        populate: { path: 'userId', select: 'firstName lastName profilePhoto' },
+      })
       .populate('gymId', 'name address phone');
 
     if (!cls) {
@@ -183,11 +191,21 @@ exports.bookClass = async (req, res, next) => {
       });
     }
 
-    const member = await Member.findOne({ userId: req.user.id, gymId: cls.gymId });
+    const memberProfiles = await Member.find({
+      userId: req.user.id,
+      membershipStatus: { $ne: 'canceled' },
+    });
+
+    let member = memberProfiles.find((m) => String(m.gymId) === String(cls.gymId));
+
+    // Auto-provision a basic membership profile for this gym if none exists.
     if (!member) {
-      return res.status(404).json({
-        success: false,
-        message: 'You must be a member of this gym to book a class',
+      member = await Member.create({
+        userId: req.user.id,
+        gymId: cls.gymId,
+        membershipPlan: 'base',
+        membershipStatus: 'active',
+        memberSince: new Date(),
       });
     }
 
@@ -278,14 +296,11 @@ exports.cancelClassBooking = async (req, res, next) => {
       return res.status(404).json({ success: false, message: 'Class not found' });
     }
 
-    const member = await Member.findOne({ userId: req.user.id, gymId: cls.gymId });
-    if (!member) {
-      return res.status(404).json({ success: false, message: 'Member not found' });
-    }
+    const memberIds = (await Member.find({ userId: req.user.id }).select('_id')).map((m) => m._id);
 
     const booking = await ClassBooking.findOne({
       classId: id,
-      memberId: member._id,
+      memberId: { $in: memberIds },
       status: 'booked',
     });
 
@@ -334,14 +349,18 @@ exports.classCheckIn = async (req, res, next) => {
       return res.status(404).json({ success: false, message: 'Class not found' });
     }
 
-    const member = await Member.findOne({ userId: req.user.id, gymId: cls.gymId });
-    if (!member) {
-      return res.status(404).json({ success: false, message: 'Member not found' });
+    const memberIds = (await Member.find({ userId: req.user.id }).select('_id')).map((m) => m._id);
+
+    if (!memberIds.length) {
+      return res.status(404).json({
+        success: false,
+        message: 'You are not booked for this class',
+      });
     }
 
     const booking = await ClassBooking.findOne({
       classId: id,
-      memberId: member._id,
+      memberId: { $in: memberIds },
       status: 'booked',
     });
 
@@ -350,6 +369,12 @@ exports.classCheckIn = async (req, res, next) => {
         success: false,
         message: 'You are not booked for this class',
       });
+    }
+
+    const member = await Member.findById(booking.memberId);
+
+    if (!member) {
+      return res.status(404).json({ success: false, message: 'Booking member profile not found' });
     }
 
     booking.status = 'attended';

@@ -2,19 +2,22 @@ import React, { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Menu, X, Moon, Sun, ShoppingCart } from 'lucide-react';
-import { useSelector } from 'react-redux';
+import { useDispatch, useSelector } from 'react-redux';
 import Button from '../ui/Button';
 import { useTheme } from '../../context/ThemeContext';
 import { useLanguage } from '../../hooks/useLanguage';
+import { logoutAsync } from '../../app/slices/authSlice';
 
 const Navbar = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
+  const dispatch = useDispatch();
 
   const { isDark, toggleTheme } = useTheme();
   const { t } = useLanguage();
+  const { isAuthenticated, user } = useSelector((state) => state.auth || {});
 
   const { items: cartItems } = useSelector((state) => state.cart || { items: [] });
   const cartCount = cartItems?.length || 0;
@@ -48,6 +51,20 @@ const Navbar = () => {
     'crunch-plus': '/crunch-plus',
   };
 
+  // Prefetch lazy-loaded page chunks on hover for instant navigation
+  const prefetchMap = {
+    shop: () => import('../../pages/shop/ShopPage'),
+    locations: () => import('../../pages/public/LocationsPage'),
+    classes: () => import('../../pages/public/ClassesPage'),
+    training: () => import('../../pages/public/TrainingPage'),
+    'crunch-plus': () => import('../../pages/public/CrunchPlusPage'),
+  };
+
+  const prefetchRoute = (key) => {
+    const loader = prefetchMap[key];
+    if (loader) loader();
+  };
+
   const containerClass = isDark
     ? isScrolled
       ? 'bg-slate-950/92 border-b border-slate-700/70 shadow-xl shadow-black/30 backdrop-blur-xl'
@@ -65,6 +82,24 @@ const Navbar = () => {
 
   const handleNavClick = (path) => {
     navigate(path);
+  };
+
+  const handleLogout = async () => {
+    try {
+      await dispatch(logoutAsync()).unwrap();
+    } catch (error) {
+      // Ignore and continue redirect to login; client state is cleared by thunk.
+    } finally {
+      setIsOpen(false);
+      navigate('/login', { replace: true });
+    }
+  };
+
+  const getDashboardPath = () => {
+    if (user?.role === 'admin' || user?.role === 'super_admin') return '/admin/dashboard';
+    if (user?.role === 'gym_owner') return '/gym-owner/dashboard';
+    if (user?.role === 'trainer') return '/trainer/dashboard';
+    return '/member/dashboard';
   };
 
   return (
@@ -98,6 +133,7 @@ const Navbar = () => {
                   <button
                     key={link.key}
                     onClick={() => handleNavClick(paths[link.key])}
+                    onMouseEnter={() => prefetchRoute(link.key)}
                     className={`relative rounded-xl px-3 py-2 text-sm font-semibold transition-colors duration-200 ${getNavItemClass(active)}`}
                   >
                     {t(link.i18nKey)}
@@ -144,13 +180,26 @@ const Navbar = () => {
                 )}
               </button>
 
-              <Button onClick={() => navigate('/login')} variant="outline" size="sm">
-                {t('common.login')}
-              </Button>
+              {isAuthenticated ? (
+                <>
+                  <Button onClick={() => navigate(getDashboardPath())} variant="outline" size="sm">
+                    {t('member.nav.dashboard') || 'Dashboard'}
+                  </Button>
+                  <Button onClick={handleLogout} variant="primary" size="sm" className="ml-1">
+                    {t('common.logout') || 'Logout'}
+                  </Button>
+                </>
+              ) : (
+                <>
+                  <Button onClick={() => navigate('/login')} variant="outline" size="sm">
+                    {t('common.login')}
+                  </Button>
 
-              <Button onClick={() => navigate('/free-trial')} variant="primary" size="sm" className="ml-1">
-                {t('navbar.viewPlans')}
-              </Button>
+                  <Button onClick={() => navigate('/free-trial')} variant="primary" size="sm" className="ml-1">
+                    {t('navbar.viewPlans')}
+                  </Button>
+                </>
+              )}
             </div>
 
             <div className="flex items-center gap-2 lg:hidden">
@@ -238,6 +287,7 @@ const Navbar = () => {
                     <button
                       key={link.key}
                       onClick={() => handleNavClick(paths[link.key])}
+                      onMouseEnter={() => prefetchRoute(link.key)}
                       className={`w-full rounded-xl px-4 py-3 text-left text-sm font-semibold transition-colors duration-200 ${
                         active
                           ? 'bg-accent text-white'
@@ -252,12 +302,25 @@ const Navbar = () => {
                 })}
 
                 <div className={`mt-3 grid grid-cols-2 gap-2 border-t pt-3 ${isDark ? 'border-slate-700/60' : 'border-slate-200/80'}`}>
-                  <Button onClick={() => navigate('/login')} variant="outline" size="sm" className="w-full">
-                    {t('common.login')}
-                  </Button>
-                  <Button onClick={() => navigate('/free-trial')} variant="primary" size="sm" className="w-full">
-                    {t('navbar.viewPlans')}
-                  </Button>
+                  {isAuthenticated ? (
+                    <>
+                      <Button onClick={() => navigate(getDashboardPath())} variant="outline" size="sm" className="w-full">
+                        {t('member.nav.dashboard') || 'Dashboard'}
+                      </Button>
+                      <Button onClick={handleLogout} variant="primary" size="sm" className="w-full">
+                        {t('common.logout') || 'Logout'}
+                      </Button>
+                    </>
+                  ) : (
+                    <>
+                      <Button onClick={() => navigate('/login')} variant="outline" size="sm" className="w-full">
+                        {t('common.login')}
+                      </Button>
+                      <Button onClick={() => navigate('/free-trial')} variant="primary" size="sm" className="w-full">
+                        {t('navbar.viewPlans')}
+                      </Button>
+                    </>
+                  )}
                 </div>
               </div>
             </motion.div>

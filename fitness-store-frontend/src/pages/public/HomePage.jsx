@@ -10,6 +10,7 @@ import Input from '../../components/ui/Input';
 import Badge from '../../components/ui/Badge';
 import Rating from '../../components/ui/Rating';
 import SEO from '../../components/seo/SEO';
+import { fetchContentByKey } from '../../services/contentService';
 import 'swiper/css';
 import 'swiper/css/navigation';
 import 'swiper/css/pagination';
@@ -19,14 +20,33 @@ const HomePage = () => {
   const appUrl = import.meta.env.VITE_APP_URL || 'http://localhost:5173';
   const [location, setLocation] = useState('');
   const [cycleIndex, setCycleIndex] = useState(0);
+  const [contentData, setContentData] = useState(null);
   const [counter, setCounter] = useState({ locations: 0, members: 0, classes: 0 });
 
-  const cycleText = ['Get Stronger', 'Get Faster', 'Get Healthier'];
-  const stats = [
+  const defaultCycleText = ['Get Stronger', 'Get Faster', 'Get Healthier'];
+  const defaultStats = [
     { label: 'Locations', value: 400, prefix: '' },
     { label: 'Members', value: 1000000, prefix: '1M+' },
     { label: 'Classes', value: 30, prefix: '' },
   ];
+
+  const cycleText = contentData?.cycleText || defaultCycleText;
+  const stats = contentData?.stats || defaultStats;
+
+  useEffect(() => {
+    let mounted = true;
+    fetchContentByKey('home-page')
+      .then((content) => {
+        if (mounted && content) setContentData(content);
+      })
+      .catch(() => {
+        // Keep defaults when content entry is missing.
+      });
+
+    return () => {
+      mounted = false;
+    };
+  }, []);
 
   // Text cycling animation
   useEffect(() => {
@@ -34,26 +54,30 @@ const HomePage = () => {
       setCycleIndex((prev) => (prev + 1) % cycleText.length);
     }, 3000);
     return () => clearInterval(interval);
-  }, []);
+  }, [cycleText.length]);
 
   // Counter animation
   useEffect(() => {
     const animateCounter = () => {
       const duration = 2000;
       const startTime = Date.now();
+      const locationsTarget = Number(stats?.[0]?.value || 0);
+      const membersTarget = Number(stats?.[1]?.value || 0);
+      const classesTarget = Number(stats?.[2]?.value || 0);
+
       const interval = setInterval(() => {
         const elapsed = Date.now() - startTime;
         const progress = Math.min(elapsed / duration, 1);
         setCounter({
-          locations: Math.floor(400 * progress),
-          members: Math.floor(1000000 * progress),
-          classes: Math.floor(30 * progress),
+          locations: Math.floor(locationsTarget * progress),
+          members: Math.floor(membersTarget * progress),
+          classes: Math.floor(classesTarget * progress),
         });
         if (progress === 1) clearInterval(interval);
       }, 50);
     };
     animateCounter();
-  }, []);
+  }, [stats]);
 
   const handleSearch = () => {
     if (location.trim()) {
@@ -61,7 +85,7 @@ const HomePage = () => {
     }
   };
 
-  const classes = [
+  const classes = contentData?.classes || [
     { name: 'Strength', icon: Dumbbell, color: 'from-accent' },
     { name: 'Ride', icon: Activity, color: 'from-secondary' },
     { name: 'Mind Body', icon: Heart, color: 'from-blue-600' },
@@ -70,7 +94,7 @@ const HomePage = () => {
     { name: 'Specialty', icon: Star, color: 'from-purple-600' },
   ];
 
-  const testimonials = [
+  const testimonials = contentData?.testimonials || [
     {
       name: 'Sarah M.',
       location: 'New York',
@@ -115,13 +139,13 @@ const HomePage = () => {
     },
   ];
 
-  const membershipPlans = [
+  const membershipPlans = contentData?.membershipPlans || [
     { name: 'Crunch Basic', price: '$9.99/mo', features: ['All Gyms Access', 'Basic Classes', 'App Access'] },
     { name: 'Crunch Plus', price: '$19.99/mo', features: ['All Gyms Access', 'All Classes', 'HydroMassage'] },
     { name: 'Crunch Premier', price: '$24.99/mo', features: ['All Above +', 'Personal Training', 'Priority Booking'] },
   ];
 
-  const philosophyItems = [
+  const philosophyItems = contentData?.philosophyItems || [
     { title: 'Positivity', description: 'We celebrate every win, big or small, in a judgment-free zone.', icon: Sparkles },
     { title: 'Inclusivity', description: 'Every body is welcome here. Fitness looks different for everyone.', icon: Users },
     { title: 'Fun', description: 'Working out should feel good. Energy is for everyone.', icon: Award },

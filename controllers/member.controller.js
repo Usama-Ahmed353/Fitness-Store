@@ -343,6 +343,79 @@ exports.getMyCheckIns = async (req, res, next) => {
   }
 };
 
+// @desc    Get current user's class bookings
+// @route   GET /api/members/me/bookings
+// @access  Private
+exports.getMyBookings = async (req, res, next) => {
+  try {
+    const memberIds = (await Member.find({ userId: req.user.id }).select('_id')).map((m) => m._id);
+
+    if (!memberIds.length) {
+      return res.status(200).json({ success: true, data: [] });
+    }
+
+    const bookings = await ClassBooking.find({ memberId: { $in: memberIds } })
+      .populate({
+        path: 'classId',
+        populate: [
+          { path: 'gymId', select: 'name' },
+          {
+            path: 'instructorId',
+            populate: { path: 'userId', select: 'firstName lastName' },
+          },
+        ],
+      })
+      .sort({ createdAt: -1 });
+
+    const now = new Date();
+    const data = bookings
+      .filter((booking) => booking.classId)
+      .map((booking) => {
+        const cls = booking.classId;
+        const scheduleDate = cls.schedule?.date ? new Date(cls.schedule.date) : null;
+        const isPastBySchedule = scheduleDate ? scheduleDate < now : false;
+
+        let status = 'upcoming';
+        if (booking.status === 'canceled') {
+          status = 'canceled';
+        } else if (booking.waitlistPosition) {
+          status = 'waitlist';
+        } else if (booking.status === 'attended' || booking.status === 'no_show' || isPastBySchedule) {
+          status = 'past';
+        }
+
+        const instructorUser = cls.instructorId?.userId;
+
+        return {
+          _id: booking._id,
+          classId: cls._id,
+          className: cls.name,
+          instructor:
+            instructorUser
+              ? `${instructorUser.firstName || ''} ${instructorUser.lastName || ''}`.trim()
+              : 'Instructor',
+          date: scheduleDate ? scheduleDate.toISOString().split('T')[0] : booking.createdAt.toISOString().split('T')[0],
+          time: cls.schedule?.time || '00:00',
+          duration: cls.duration || 60,
+          gym: cls.gymId?.name || 'Gym',
+          status,
+          attended: booking.status === 'attended',
+          difficulty: cls.difficulty || 'intermediate',
+          waitlistPosition: booking.waitlistPosition || null,
+          bookedAt: booking.createdAt,
+          canceledAt: booking.canceledAt,
+        };
+      });
+
+    res.status(200).json({
+      success: true,
+      data,
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
 // @desc    Get all members (admin)
 // @route   GET /api/members
 // @access  Private (admin)

@@ -83,6 +83,21 @@ const CheckoutContent = () => {
 
     const order = createResult.payload.order;
     const secret = createResult.payload.clientSecret;
+    const isDevMode = createResult.payload.devMode;
+
+    if (isDevMode) {
+      // DEV MODE: Skip Stripe — directly confirm the order
+      console.log('[DEV] Simulated payment — skipping Stripe card confirmation');
+      const confirmResult = await dispatch(confirmPayment(order._id));
+      if (!confirmResult.error) {
+        dispatch(resetCart());
+        setStep(3);
+        toast.success('Order placed successfully! (Dev Mode)');
+      } else {
+        toast.error(confirmResult.payload || 'Order confirmation failed.');
+      }
+      return;
+    }
 
     const { error: stripeError, paymentIntent } = await stripe.confirmCardPayment(secret, {
       payment_method: {
@@ -225,7 +240,7 @@ const CheckoutContent = () => {
                   </div>
                   <div className="flex gap-3">
                     <button onClick={() => setStep(1)} className="px-6 py-3 bg-white/10 rounded-lg hover:bg-white/20">Back</button>
-                    <button onClick={handlePlaceOrder} disabled={orderLoading || !STRIPE_PUBLISHABLE_KEY || !stripe || !elements} className="flex-1 flex items-center justify-center gap-2 py-3 bg-accent text-white rounded-lg hover:bg-accent/90 font-semibold disabled:opacity-50">
+                    <button onClick={handlePlaceOrder} disabled={orderLoading || !stripe || !elements} className="flex-1 flex items-center justify-center gap-2 py-3 bg-accent text-white rounded-lg hover:bg-accent/90 font-semibold disabled:opacity-50">
                       {orderLoading ? <Loader className="w-5 h-5 animate-spin" /> : <Lock className="w-4 h-4" />}
                       {orderLoading ? 'Processing...' : `Pay $${total.toFixed(2)}`}
                     </button>

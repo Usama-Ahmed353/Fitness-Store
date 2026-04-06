@@ -52,8 +52,8 @@ export const fetchMemberBookings = createAsyncThunk(
   'member/fetchMemberBookings',
   async (_, { rejectWithValue }) => {
     try {
-      const response = await api.get('/members/me');
-      return response.data?.data?.classHistory || [];
+      const response = await api.get('/members/me/bookings');
+      return response.data?.data || [];
     } catch (error) {
       return rejectWithValue(error.response?.data?.message || 'Failed to fetch bookings');
     }

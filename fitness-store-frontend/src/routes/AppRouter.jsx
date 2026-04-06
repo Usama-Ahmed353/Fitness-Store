@@ -1,14 +1,22 @@
 import React, { useEffect, Suspense } from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate, Outlet } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import { verifyTokenAsync, setStore } from '../app/slices/authSlice';
 import { useStore } from 'react-redux';
 import Navbar from '../components/layout/Navbar';
 import Footer from '../components/layout/Footer';
+import ScrollToTop from '../components/layout/ScrollToTop';
 import MemberSidebarLayout from '../layouts/MemberLayout';
 import ErrorBoundary from '../components/error/ErrorBoundary';
 import LoadingFallback from '../components/loading/LoadingFallback';
 import GlobalLoadingBar from '../components/loading/GlobalLoadingBar';
+
+// Lightweight inline spinner for route transitions (avoids full-page skeleton flash)
+const RouteSpinner = () => (
+  <div className="flex items-center justify-center min-h-[60vh]">
+    <div className="h-10 w-10 animate-spin rounded-full border-4 border-accent/30 border-t-accent" />
+  </div>
+);
 
 // Lazy load pages for better performance
 const Home = React.lazy(() => import('../pages/public/HomePage'));
@@ -80,40 +88,46 @@ const ProtectedRoute = ({ children, requiredRole = null }) => {
   return children;
 };
 
-// Public Layout (with Navbar and Footer)
-const PublicLayout = ({ children }) => (
+// Shared Public Layout — Navbar and Footer stay mounted across route changes
+const PublicLayout = () => (
   <div className="flex flex-col min-h-screen bg-dark-navy dark:bg-gray-900">
     <Navbar />
     <main id="main-content" className="flex-grow">
-      <Suspense fallback={<LoadingFallback />}>{children}</Suspense>
+      <Suspense fallback={<RouteSpinner />}>
+        <Outlet />
+      </Suspense>
     </main>
     <Footer />
   </div>
 );
 
-// Member Layout (with Navbar and Footer, protected)
-const MemberLayout = ({ children }) => (
+// Member Layout (with sidebar, protected)
+const MemberLayoutRoute = () => (
   <MemberSidebarLayout>
-    <Suspense fallback={<LoadingFallback />}>{children}</Suspense>
+    <Suspense fallback={<RouteSpinner />}>
+      <Outlet />
+    </Suspense>
   </MemberSidebarLayout>
 );
 
 // Admin Layout (protected)
-const AdminLayout = ({ children }) => (
+const AdminLayoutRoute = () => (
   <div className="flex min-h-screen bg-dark-navy dark:bg-gray-900">
-    {/* Admin Sidebar would go here */}
     <main id="main-content" className="flex-grow">
-      <Suspense fallback={<LoadingFallback />}>{children}</Suspense>
+      <Suspense fallback={<RouteSpinner />}>
+        <Outlet />
+      </Suspense>
     </main>
   </div>
 );
 
 // Gym Owner Layout (protected)
-const GymOwnerLayout = ({ children }) => (
+const GymOwnerLayoutRoute = () => (
   <div className="flex min-h-screen bg-dark-navy dark:bg-gray-900">
-    {/* Gym Owner Sidebar would go here */}
     <main id="main-content" className="flex-grow">
-      <Suspense fallback={<LoadingFallback />}>{children}</Suspense>
+      <Suspense fallback={<RouteSpinner />}>
+        <Outlet />
+      </Suspense>
     </main>
   </div>
 );
@@ -142,503 +156,177 @@ const AppRouter = () => {
   return (
     <ErrorBoundary>
       <Router>
+        <ScrollToTop />
         <GlobalLoadingBar />
         <Routes>
-        {/* Public Routes */}
-        <Route
-          path="/"
-          element={
-            <PublicLayout>
-              <Home />
-            </PublicLayout>
-          }
-        />
+          {/* ────────── Public Routes (shared Navbar + Footer) ────────── */}
+          <Route element={<PublicLayout />}>
+            <Route path="/" element={<Home />} />
+            <Route path="/locations" element={<Locations />} />
+            <Route path="/classes" element={<Classes />} />
+            <Route path="/training" element={<Training />} />
+            <Route path="/crunch-plus" element={<CrunchPlus />} />
+            <Route path="/membership" element={<Membership />} />
+            <Route path="/about" element={<About />} />
+            <Route path="/free-trial" element={<FreeTrial />} />
+            <Route path="/contact" element={<Contact />} />
+            <Route path="/join" element={<RegisterPage />} />
 
-        <Route
-          path="/locations"
-          element={
-            <PublicLayout>
-              <Locations />
-            </PublicLayout>
-          }
-        />
+            {/* Auth Routes */}
+            <Route path="/login" element={<LoginPage />} />
+            <Route path="/register" element={<RegisterPage />} />
+            <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+            <Route path="/reset-password" element={<ResetPasswordPage />} />
+            <Route path="/verify-email" element={<VerifyEmailPage />} />
 
-        <Route
-          path="/classes"
-          element={
-            <PublicLayout>
-              <Classes />
-            </PublicLayout>
-          }
-        />
+            {/* Member Onboarding Routes (public layout, protected) */}
+            <Route
+              path="/member/onboarding"
+              element={
+                <ProtectedRoute>
+                  <OnboardingFlow />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/member/profile-setup"
+              element={
+                <ProtectedRoute>
+                  <ProfileSetupPage />
+                </ProtectedRoute>
+              }
+            />
 
-        <Route
-          path="/training"
-          element={
-            <PublicLayout>
-              <Training />
-            </PublicLayout>
-          }
-        />
+            {/* Shop / E-Commerce (public layout) */}
+            <Route path="/shop" element={<ShopPage />} />
+            <Route path="/product/:slug" element={<ProductDetailPage />} />
+            <Route path="/cart" element={<CartPage />} />
+            <Route
+              path="/checkout"
+              element={
+                <ProtectedRoute>
+                  <CheckoutPage />
+                </ProtectedRoute>
+              }
+            />
+          </Route>
 
-        <Route
-          path="/crunch-plus"
-          element={
-            <PublicLayout>
-              <CrunchPlus />
-            </PublicLayout>
-          }
-        />
+          {/* ────────── Member Routes (no public navbar — standalone) ────────── */}
+          <Route
+            path="/member/dashboard"
+            element={
+              <ProtectedRoute>
+                <DashboardPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/member/bookings"
+            element={
+              <ProtectedRoute>
+                <MyBookingsPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/member/classes"
+            element={
+              <ProtectedRoute>
+                <MemberClassesPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/member/checkin"
+            element={
+              <ProtectedRoute>
+                <CheckInPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/member/trainers"
+            element={
+              <ProtectedRoute>
+                <TrainersPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/member/progress"
+            element={
+              <ProtectedRoute>
+                <ProgressPage />
+              </ProtectedRoute>
+            }
+          />
 
-        <Route
-          path="/membership"
-          element={
-            <PublicLayout>
-              <Membership />
-            </PublicLayout>
-          }
-        />
+          {/* Member Routes with sidebar layout */}
+          <Route
+            element={
+              <ProtectedRoute>
+                <MemberLayoutRoute />
+              </ProtectedRoute>
+            }
+          >
+            <Route path="/member/profile" element={<MemberProfile />} />
+            <Route path="/member/nutrition" element={<NutritionPage />} />
+            <Route path="/member/challenges" element={<ChallengesPage />} />
+            <Route
+              path="/member/community"
+              element={<CommunityPage userId={user?.id} currentUser={user} />}
+            />
+            <Route path="/member/settings" element={<MemberSettingsPage />} />
+            <Route path="/orders" element={<OrdersPage />} />
+            <Route path="/orders/:id" element={<OrderDetailPage />} />
+            <Route path="/wishlist" element={<WishlistPage />} />
+          </Route>
 
-        <Route
-          path="/about"
-          element={
-            <PublicLayout>
-              <About />
-            </PublicLayout>
-          }
-        />
+          {/* ────────── Admin Routes ────────── */}
+          <Route
+            element={
+              <ProtectedRoute requiredRole={['admin', 'super_admin']}>
+                <AdminLayoutRoute />
+              </ProtectedRoute>
+            }
+          >
+            <Route path="/admin" element={<AdminDashboard />} />
+            <Route path="/admin/dashboard" element={<AdminDashboard />} />
+            <Route path="/admin/members" element={<AdminMembersPage />} />
+            <Route path="/admin/gyms" element={<AdminGymsPage />} />
+            <Route path="/admin/classes" element={<AdminClassesPage />} />
+            <Route path="/admin/trainers" element={<AdminTrainersPage />} />
+            <Route path="/admin/payments" element={<AdminPaymentsPage />} />
+            <Route path="/admin/reports" element={<AdminReportsPage />} />
+            <Route path="/admin/content" element={<AdminContentPage />} />
+            <Route path="/admin/contents" element={<AdminContentPage />} />
+            <Route path="/admin/settings" element={<AdminSettingsPage />} />
+            <Route path="/admin/products" element={<AdminProductsPage />} />
+            <Route path="/admin/orders" element={<AdminOrdersPage />} />
+          </Route>
 
-        <Route
-          path="/free-trial"
-          element={
-            <PublicLayout>
-              <FreeTrial />
-            </PublicLayout>
-          }
-        />
+          {/* ────────── Gym Owner Routes ────────── */}
+          <Route
+            element={
+              <ProtectedRoute requiredRole="gym_owner">
+                <GymOwnerLayoutRoute />
+              </ProtectedRoute>
+            }
+          >
+            <Route path="/gym-owner/dashboard" element={<GymOwnerDashboard />} />
+          </Route>
 
-        <Route
-          path="/contact"
-          element={
-            <PublicLayout>
-              <Contact />
-            </PublicLayout>
-          }
-        />
-
-        <Route
-          path="/join"
-          element={
-            <PublicLayout>
-              <RegisterPage />
-            </PublicLayout>
-          }
-        />
-
-        {/* Auth Routes */}
-        <Route
-          path="/login"
-          element={
-            <PublicLayout>
-              <LoginPage />
-            </PublicLayout>
-          }
-        />
-
-        <Route
-          path="/register"
-          element={
-            <PublicLayout>
-              <RegisterPage />
-            </PublicLayout>
-          }
-        />
-
-        <Route
-          path="/forgot-password"
-          element={
-            <PublicLayout>
-              <ForgotPasswordPage />
-            </PublicLayout>
-          }
-        />
-
-        <Route
-          path="/reset-password"
-          element={
-            <PublicLayout>
-              <ResetPasswordPage />
-            </PublicLayout>
-          }
-        />
-
-        <Route
-          path="/verify-email"
-          element={
-            <PublicLayout>
-              <VerifyEmailPage />
-            </PublicLayout>
-          }
-        />
-
-        {/* Member Onboarding Routes */}
-        <Route
-          path="/member/onboarding"
-          element={
-            <ProtectedRoute>
-              <PublicLayout>
-                <OnboardingFlow />
-              </PublicLayout>
-            </ProtectedRoute>
-          }
-        />
-
-        <Route
-          path="/member/profile-setup"
-          element={
-            <ProtectedRoute>
-              <PublicLayout>
-                <ProfileSetupPage />
-              </PublicLayout>
-            </ProtectedRoute>
-          }
-        />
-
-        {/* Member Protected Routes */}
-        <Route
-          path="/member/dashboard"
-          element={
-            <ProtectedRoute>
-              <DashboardPage />
-            </ProtectedRoute>
-          }
-        />
-
-        <Route
-          path="/member/bookings"
-          element={
-            <ProtectedRoute>
-              <MyBookingsPage />
-            </ProtectedRoute>
-          }
-        />
-
-        <Route
-          path="/member/profile"
-          element={
-            <ProtectedRoute>
-              <MemberLayout>
-                <MemberProfile />
-              </MemberLayout>
-            </ProtectedRoute>
-          }
-        />
-
-        <Route
-          path="/member/classes"
-          element={
-            <ProtectedRoute>
-              <MemberClassesPage />
-            </ProtectedRoute>
-          }
-        />
-
-        <Route
-          path="/member/checkin"
-          element={
-            <ProtectedRoute>
-              <CheckInPage />
-            </ProtectedRoute>
-          }
-        />
-
-        <Route
-          path="/member/trainers"
-          element={
-            <ProtectedRoute>
-              <TrainersPage />
-            </ProtectedRoute>
-          }
-        />
-
-        <Route
-          path="/member/progress"
-          element={
-            <ProtectedRoute>
-              <ProgressPage />
-            </ProtectedRoute>
-          }
-        />
-
-        <Route
-          path="/member/nutrition"
-          element={
-            <ProtectedRoute>
-              <MemberLayout>
-                <NutritionPage />
-              </MemberLayout>
-            </ProtectedRoute>
-          }
-        />
-
-        <Route
-          path="/member/challenges"
-          element={
-            <ProtectedRoute>
-              <MemberLayout>
-                <ChallengesPage />
-              </MemberLayout>
-            </ProtectedRoute>
-          }
-        />
-
-        <Route
-          path="/member/community"
-          element={
-            <ProtectedRoute>
-              <MemberLayout>
-                <CommunityPage userId={user?.id} currentUser={user} />
-              </MemberLayout>
-            </ProtectedRoute>
-          }
-        />
-
-        <Route
-          path="/member/settings"
-          element={
-            <ProtectedRoute>
-              <MemberLayout>
-                <MemberSettingsPage />
-              </MemberLayout>
-            </ProtectedRoute>
-          }
-        />
-
-        {/* Admin Protected Routes */}
-        <Route
-          path="/admin"
-          element={
-            <ProtectedRoute requiredRole={['admin', 'super_admin']}>
-              <AdminLayout>
-                <AdminDashboard />
-              </AdminLayout>
-            </ProtectedRoute>
-          }
-        />
-
-        <Route
-          path="/admin/dashboard"
-          element={
-            <ProtectedRoute requiredRole={['admin', 'super_admin']}>
-              <AdminLayout>
-                <AdminDashboard />
-              </AdminLayout>
-            </ProtectedRoute>
-          }
-        />
-
-        <Route
-          path="/admin/members"
-          element={
-            <ProtectedRoute requiredRole={['admin', 'super_admin']}>
-              <AdminLayout>
-                <AdminMembersPage />
-              </AdminLayout>
-            </ProtectedRoute>
-          }
-        />
-
-        <Route
-          path="/admin/gyms"
-          element={
-            <ProtectedRoute requiredRole={['admin', 'super_admin']}>
-              <AdminGymsPage />
-            </ProtectedRoute>
-          }
-        />
-
-        <Route
-          path="/admin/classes"
-          element={
-            <ProtectedRoute requiredRole={['admin', 'super_admin']}>
-              <AdminClassesPage />
-            </ProtectedRoute>
-          }
-        />
-
-        <Route
-          path="/admin/trainers"
-          element={
-            <ProtectedRoute requiredRole={['admin', 'super_admin']}>
-              <AdminTrainersPage />
-            </ProtectedRoute>
-          }
-        />
-
-        <Route
-          path="/admin/payments"
-          element={
-            <ProtectedRoute requiredRole={['admin', 'super_admin']}>
-              <AdminPaymentsPage />
-            </ProtectedRoute>
-          }
-        />
-
-        <Route
-          path="/admin/reports"
-          element={
-            <ProtectedRoute requiredRole={['admin', 'super_admin']}>
-              <AdminReportsPage />
-            </ProtectedRoute>
-          }
-        />
-
-        <Route
-          path="/admin/content"
-          element={
-            <ProtectedRoute requiredRole={['admin', 'super_admin']}>
-              <AdminContentPage />
-            </ProtectedRoute>
-          }
-        />
-
-        {/* Backward-compatible alias in case users navigate to /admin/contents */}
-        <Route
-          path="/admin/contents"
-          element={
-            <ProtectedRoute requiredRole={['admin', 'super_admin']}>
-              <AdminContentPage />
-            </ProtectedRoute>
-          }
-        />
-
-        <Route
-          path="/admin/settings"
-          element={
-            <ProtectedRoute requiredRole={['admin', 'super_admin']}>
-              <AdminSettingsPage />
-            </ProtectedRoute>
-          }
-        />
-
-        {/* Gym Owner Protected Routes */}
-        <Route
-          path="/gym-owner/dashboard"
-          element={
-            <ProtectedRoute requiredRole="gym_owner">
-              <GymOwnerLayout>
-                <GymOwnerDashboard />
-              </GymOwnerLayout>
-            </ProtectedRoute>
-          }
-        />
-
-        {/* Shop / E-Commerce Routes */}
-        <Route
-          path="/shop"
-          element={
-            <PublicLayout>
-              <ShopPage />
-            </PublicLayout>
-          }
-        />
-
-        <Route
-          path="/product/:slug"
-          element={
-            <PublicLayout>
-              <ProductDetailPage />
-            </PublicLayout>
-          }
-        />
-
-        <Route
-          path="/cart"
-          element={
-            <PublicLayout>
-              <CartPage />
-            </PublicLayout>
-          }
-        />
-
-        <Route
-          path="/checkout"
-          element={
-            <ProtectedRoute>
-              <PublicLayout>
-                <CheckoutPage />
-              </PublicLayout>
-            </ProtectedRoute>
-          }
-        />
-
-        <Route
-          path="/orders"
-          element={
-            <ProtectedRoute>
-              <MemberLayout>
-                <OrdersPage />
-              </MemberLayout>
-            </ProtectedRoute>
-          }
-        />
-
-        <Route
-          path="/orders/:id"
-          element={
-            <ProtectedRoute>
-              <MemberLayout>
-                <OrderDetailPage />
-              </MemberLayout>
-            </ProtectedRoute>
-          }
-        />
-
-        <Route
-          path="/wishlist"
-          element={
-            <ProtectedRoute>
-              <MemberLayout>
-                <WishlistPage />
-              </MemberLayout>
-            </ProtectedRoute>
-          }
-        />
-
-        {/* Admin E-Commerce Routes */}
-        <Route
-          path="/admin/products"
-          element={
-            <ProtectedRoute requiredRole={['admin', 'super_admin']}>
-              <AdminLayout>
-                <AdminProductsPage />
-              </AdminLayout>
-            </ProtectedRoute>
-          }
-        />
-
-        <Route
-          path="/admin/orders"
-          element={
-            <ProtectedRoute requiredRole={['admin', 'super_admin']}>
-              <AdminLayout>
-                <AdminOrdersPage />
-              </AdminLayout>
-            </ProtectedRoute>
-          }
-        />
-
-        {/* 404 Not Found */}
-        <Route
-          path="*"
-          element={
-            <React.Suspense fallback={<LoadingFallback />}>
-              <NotFoundPage />
-            </React.Suspense>
-          }
-        />
-      </Routes>
-    </Router>
+          {/* 404 Not Found */}
+          <Route
+            path="*"
+            element={
+              <React.Suspense fallback={<LoadingFallback />}>
+                <NotFoundPage />
+              </React.Suspense>
+            }
+          />
+        </Routes>
+      </Router>
     </ErrorBoundary>
   );
 };

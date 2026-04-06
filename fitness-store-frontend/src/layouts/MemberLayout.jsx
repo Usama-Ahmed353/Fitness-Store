@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
 import { useLanguage } from '../hooks/useLanguage';
+import { logoutAsync } from '../app/slices/authSlice';
 
 /**
  * MemberLayout - Main layout for authenticated member pages
@@ -104,9 +105,16 @@ const MemberLayout = ({ children }) => {
     setSidebarOpen(false);
   };
 
-  const handleSignOut = () => {
-    // TODO: Dispatch logout action
-    navigate('/login');
+  const handleSignOut = async () => {
+    try {
+      await dispatch(logoutAsync()).unwrap();
+    } catch (error) {
+      // Even if API logout fails, client auth state should still be cleared by thunk.
+    } finally {
+      setProfileDropdownOpen(false);
+      setSidebarOpen(false);
+      navigate('/login', { replace: true });
+    }
   };
 
   // Get greeting based on time of day

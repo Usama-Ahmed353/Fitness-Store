@@ -1,5 +1,6 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect, useCallback } from 'react';
 import { useSelector } from 'react-redux';
+import axios from 'axios';
 import { motion, AnimatePresence } from 'framer-motion';
 import toast from 'react-hot-toast';
 import { useTheme } from '../../context/ThemeContext';
@@ -29,6 +30,9 @@ const ClassesPage = () => {
   const { isDark } = useTheme();
   const { t } = useLanguage();
   const { profile } = useSelector((state) => state.member);
+  const { accessToken } = useSelector((state) => state.auth);
+  const runtimeHost = typeof window !== 'undefined' ? window.location.hostname : 'localhost';
+  const API = import.meta.env.VITE_API_BASE_URL || `http://${runtimeHost}:5001/api`;
 
   // View modes
   const [viewMode, setViewMode] = useState('list'); // 'list' or 'calendar'
@@ -46,9 +50,11 @@ const ClassesPage = () => {
   const [showBookingModal, setShowBookingModal] = useState(false);
   const [bookedClasses, setBookedClasses] = useState([]);
   const [waitlistedClasses, setWaitlistedClasses] = useState([]);
+  const [allClasses, setAllClasses] = useState([]);
+  const [loadingClasses, setLoadingClasses] = useState(true);
 
-  // Mock class data - in production, this comes from API
-  const allClasses = [
+  // Fallback class data
+  const fallbackClasses = [
     {
       id: 1,
       name: 'Morning Spin',
@@ -171,7 +177,59 @@ const ClassesPage = () => {
     },
   ];
 
-  const categories = ['Ride', 'Strength', 'Cardio', 'Mind & Body'];
+  const loadClasses = useCallback(async () => {
+    try {
+      setLoadingClasses(true);
+      const { data } = await axios.get(`${API}/classes`, {
+        params: { limit: 100 },
+      });
+
+      const mapped = (data?.data || []).map((cls) => {
+        const trainerUser = cls.instructorId?.userId;
+        const instructorName = trainerUser
+          ? `${trainerUser.firstName || ''} ${trainerUser.lastName || ''}`.trim()
+          : 'Trainer';
+
+        return {
+          id: cls._id,
+          name: cls.name,
+          category: cls.category,
+          description: cls.description || '',
+          time: cls.schedule?.time || '00:00',
+          duration: cls.duration || 60,
+          instructor: {
+            name: instructorName,
+            id: cls.instructorId?._id || 'instr',
+            bio: cls.instructorId?.bio || 'Certified trainer',
+            image: trainerUser?.profilePhoto || 'https://via.placeholder.com/80?text=TR',
+          },
+          difficulty:
+            cls.difficulty?.charAt(0).toUpperCase() + cls.difficulty?.slice(1) || 'Intermediate',
+          maxSpots: cls.maxCapacity || 0,
+          bookedSpots: cls.currentBookings || 0,
+          equipment: cls.equipment || [],
+          cancellationPolicy: 'Cancel up to 48hr before for full credit',
+          date:
+            cls.schedule?.date
+              ? new Date(cls.schedule.date).toISOString().split('T')[0]
+              : new Date().toISOString().split('T')[0],
+        };
+      });
+
+      setAllClasses(mapped.length ? mapped : fallbackClasses);
+    } catch (error) {
+      setAllClasses(fallbackClasses);
+      toast.error(error.response?.data?.message || 'Failed to load classes');
+    } finally {
+      setLoadingClasses(false);
+    }
+  }, [API]);
+
+  useEffect(() => {
+    loadClasses();
+  }, [loadClasses]);
+
+  const categories = ['Ride', 'Strength', 'Cardio', 'Mind & Body', 'Hiit', 'Dance', 'Mind_body', 'Specialty'];
   const timeSlots = [
     { label: 'Morning (6-12)', value: 'morning', start: 6, end: 12 },
     { label: 'Afternoon (12-17)', value: 'afternoon', start: 12, end: 17 },
@@ -240,23 +298,30 @@ const ClassesPage = () => {
   };
 
   // Confirm booking
-  const handleConfirmBooking = (classItem, bookingType) => {
-    if (bookingType === 'book') {
-      setBookedClasses([...bookedClasses, classItem.id]);
-      toast.success(
-        t('member.classes.bookingSuccess') ||
-          `Successfully booked ${classItem.name}!`
-      );
-    } else if (bookingType === 'waitlist') {
-      setWaitlistedClasses([...waitlistedClasses, classItem.id]);
-      const position = waitlistedClasses.length + 1;
-      toast.success(
-        (t('member.classes.waitlistSuccess') ||
-          `Joined waitlist - Position #${position}`) +
-          ` - Position #${position}`
-      );
+  const handleConfirmBooking = async (classItem, bookingType) => {
+    if (!accessToken) {
+      toast.error('Please log in to book classes');
+      return;
     }
-    setShowBookingModal(false);
+
+    try {
+      const headers = { Authorization: `Bearer ${accessToken}` };
+      const response = await axios.post(`${API}/classes/${classItem.id}/book`, {}, { headers });
+      const waitlistPosition = response.data?.data?.waitlistPosition;
+
+      if (waitlistPosition) {
+        setWaitlistedClasses((prev) => (prev.includes(classItem.id) ? prev : [...prev, classItem.id]));
+        toast.success(`Joined waitlist - Position #${waitlistPosition}`);
+      } else {
+        setBookedClasses((prev) => (prev.includes(classItem.id) ? prev : [...prev, classItem.id]));
+        toast.success(t('member.classes.bookingSuccess') || `Successfully booked ${classItem.name}!`);
+      }
+
+      await loadClasses();
+      setShowBookingModal(false);
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Failed to book class');
+    }
   };
 
   // Get booking status
@@ -562,7 +627,13 @@ const ClassesPage = () => {
                 animate={{ opacity: 1 }}
                 className="space-y-4"
               >
-                {filteredClasses.length === 0 ? (
+                {loadingClasses ? (
+                  <Card>
+                    <div className="flex items-center justify-center py-12">
+                      <p className={isDark ? 'text-gray-300' : 'text-gray-700'}>Loading classes...</p>
+                    </div>
+                  </Card>
+                ) : filteredClasses.length === 0 ? (
                   <Card>
                     <div className="flex items-center justify-center py-12">
                       <AlertCircle className="w-12 h-12 text-gray-400 mr-4" />

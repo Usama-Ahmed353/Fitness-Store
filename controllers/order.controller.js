@@ -1,7 +1,16 @@
 const Order = require('../models/Order');
 const Cart = require('../models/Cart');
 const Product = require('../models/Product');
-const stripe = require('stripe')(process.env.STRIPE_API_KEY || 'sk_test_placeholder');
+
+const STRIPE_API_KEY = process.env.STRIPE_API_KEY || '';
+const isDevStripe = !STRIPE_API_KEY || STRIPE_API_KEY === 'sk_test_placeholder' || STRIPE_API_KEY.length < 20;
+
+let stripe;
+try {
+  stripe = require('stripe')(STRIPE_API_KEY);
+} catch (e) {
+  stripe = null;
+}
 
 // @desc    Create order from cart
 // @route   POST /api/orders
@@ -50,36 +59,51 @@ exports.createOrder = async (req, res, next) => {
       : 0;
     const total = Math.round((subtotal + shippingCost + tax - discount) * 100) / 100;
 
-    // Create Stripe payment intent
-    const paymentIntent = await stripe.paymentIntents.create({
-      amount: Math.round(total * 100), // cents
-      currency: 'usd',
-      metadata: { userId: req.user.id },
-    });
+    let paymentIntentId;
+    let clientSecret;
+
+    if (isDevStripe) {
+      // DEV MODE: Simulate payment without real Stripe keys
+      console.log('[DEV] Simulating Stripe payment — no real charge will occur');
+      paymentIntentId = `pi_dev_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
+      clientSecret = `${paymentIntentId}_secret_dev`;
+    } else {
+      // PRODUCTION: Real Stripe payment intent
+      const paymentIntent = await stripe.paymentIntents.create({
+        amount: Math.round(total * 100), // cents
+        currency: 'usd',
+        metadata: { userId: req.user.id },
+      });
+      paymentIntentId = paymentIntent.id;
+      clientSecret = paymentIntent.client_secret;
+    }
 
     const order = await Order.create({
       user: req.user.id,
       items: orderItems,
       shippingAddress,
-      paymentMethod,
+      paymentMethod: isDevStripe ? 'dev_simulated' : paymentMethod,
       subtotal,
       shippingCost,
       tax,
       discount,
       total,
       couponCode: cart.couponCode,
-      stripePaymentIntentId: paymentIntent.id,
+      stripePaymentIntentId: paymentIntentId,
     });
 
     res.status(201).json({
       success: true,
       data: {
         order,
-        clientSecret: paymentIntent.client_secret,
+        clientSecret,
+        devMode: isDevStripe,
       },
     });
   } catch (error) {
-    next(error);
+    console.error('createOrder error:', error.message);
+    console.error('createOrder stack:', error.stack);
+    res.status(500).json({ success: false, message: error.message || 'Failed to create order' });
   }
 };
 
@@ -108,7 +132,8 @@ exports.getMyOrders = async (req, res, next) => {
       },
     });
   } catch (error) {
-    next(error);
+    console.error('getMyOrders error:', error.message);
+    res.status(500).json({ success: false, message: error.message || 'Failed to fetch orders' });
   }
 };
 
@@ -129,7 +154,8 @@ exports.getOrder = async (req, res, next) => {
 
     res.json({ success: true, data: order });
   } catch (error) {
-    next(error);
+    console.error('getOrder error:', error.message);
+    res.status(500).json({ success: false, message: error.message || 'Failed to fetch order' });
   }
 };
 
@@ -154,12 +180,19 @@ exports.confirmPayment = async (req, res, next) => {
       return res.json({ success: true, data: order });
     }
 
-    const paymentIntent = await stripe.paymentIntents.retrieve(order.stripePaymentIntentId);
-    if (!paymentIntent || paymentIntent.status !== 'succeeded') {
-      return res.status(400).json({
-        success: false,
-        message: 'Payment has not been completed successfully',
-      });
+    // DEV MODE: Skip Stripe verification for simulated payments
+    const isDevPayment = order.stripePaymentIntentId?.startsWith('pi_dev_') || order.paymentMethod === 'dev_simulated';
+
+    if (!isDevPayment) {
+      const paymentIntent = await stripe.paymentIntents.retrieve(order.stripePaymentIntentId);
+      if (!paymentIntent || paymentIntent.status !== 'succeeded') {
+        return res.status(400).json({
+          success: false,
+          message: 'Payment has not been completed successfully',
+        });
+      }
+    } else {
+      console.log('[DEV] Skipping Stripe verification for simulated payment');
     }
 
     // Validate stock right before committing the order.
@@ -192,14 +225,14 @@ exports.confirmPayment = async (req, res, next) => {
     }
 
     order.paymentStatus = 'paid';
-    order.stripeChargeId = paymentIntent.latest_charge || order.stripeChargeId;
     order.status = 'processing';
     order.statusHistory.push({ status: 'processing', note: 'Payment confirmed' });
     await order.save();
 
     res.json({ success: true, data: order });
   } catch (error) {
-    next(error);
+    console.error('confirmPayment error:', error.message);
+    res.status(500).json({ success: false, message: error.message || 'Payment confirmation failed' });
   }
 };
 
@@ -241,7 +274,8 @@ exports.cancelOrder = async (req, res, next) => {
 
     res.json({ success: true, data: order });
   } catch (error) {
-    next(error);
+    console.error('cancelOrder error:', error.message);
+    res.status(500).json({ success: false, message: error.message || 'Failed to cancel order' });
   }
 };
 
@@ -284,7 +318,8 @@ exports.getAllOrders = async (req, res, next) => {
       },
     });
   } catch (error) {
-    next(error);
+    console.error('getAllOrders error:', error.message);
+    res.status(500).json({ success: false, message: error.message || 'Failed to fetch orders' });
   }
 };
 
@@ -327,7 +362,8 @@ exports.updateOrderStatus = async (req, res, next) => {
 
     res.json({ success: true, data: order });
   } catch (error) {
-    next(error);
+    console.error('updateOrderStatus error:', error.message);
+    res.status(500).json({ success: false, message: error.message || 'Failed to update order status' });
   }
 };
 
@@ -373,6 +409,7 @@ exports.getOrderAnalytics = async (req, res, next) => {
       },
     });
   } catch (error) {
-    next(error);
+    console.error('getOrderAnalytics error:', error.message);
+    res.status(500).json({ success: false, message: error.message || 'Failed to fetch analytics' });
   }
 };

@@ -33,6 +33,7 @@ const aiRoutes = require('./routes/ai.routes');
 const challengeRoutes = require('./routes/challenge.routes');
 const nutritionRoutes = require('./routes/nutrition.routes');
 const communityRoutes = require('./routes/community.routes');
+const contentRoutes = require('./routes/content.routes');
 
 // Import Socket.io handlers
 const socketHandlers = require('./socket/handlers');
@@ -160,6 +161,7 @@ app.get('/', (req, res) => {
       challenges: '/api/challenges',
       nutrition: '/api/nutrition',
       community: '/api/community',
+      content: '/api/content',
       webhooks: '/api/webhooks',
       health: '/api/health'
     },
@@ -188,6 +190,7 @@ app.use('/api/ai', aiRoutes);
 app.use('/api/challenges', challengeRoutes);
 app.use('/api/nutrition', nutritionRoutes);
 app.use('/api/community', communityRoutes);
+app.use('/api/content', contentRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {

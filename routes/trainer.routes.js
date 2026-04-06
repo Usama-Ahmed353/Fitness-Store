@@ -8,6 +8,8 @@ const {
   createTrainer,
   updateTrainer,
   getTrainerSessions,
+  getMyTrainerSessions,
+  getAdminTrainerSessions,
 } = require('../controllers/trainer.controller');
 const { verifyToken } = require('../middleware/auth');
 const { authorize } = require('../middleware/roleCheck');
@@ -23,6 +25,27 @@ router.get(
   query('minPrice').optional().isFloat({ min: 0 }),
   query('maxPrice').optional().isFloat({ min: 0 }),
   getTrainers
+);
+
+router.get(
+  '/sessions/my',
+  verifyToken,
+  query('status').optional(),
+  query('page').optional().isInt({ min: 1 }),
+  query('limit').optional().isInt({ min: 1, max: 100 }),
+  getMyTrainerSessions
+);
+
+router.get(
+  '/admin/sessions',
+  verifyToken,
+  authorize('admin', 'super_admin'),
+  query('status').optional(),
+  query('trainerId').optional().isMongoId(),
+  query('gymId').optional().isMongoId(),
+  query('page').optional().isInt({ min: 1 }),
+  query('limit').optional().isInt({ min: 1, max: 100 }),
+  getAdminTrainerSessions
 );
 
 router.get('/:id', param('id').isMongoId(), getTrainer);
@@ -49,8 +72,11 @@ router.post(
   '/',
   verifyToken,
   authorize('gym_owner'),
-  body('userId').notEmpty().withMessage('User ID is required'),
   body('gymId').notEmpty().withMessage('Gym ID is required'),
+  body('email').optional().isEmail().withMessage('Valid email is required'),
+  body('firstName').optional().isString(),
+  body('lastName').optional().isString(),
+  body('password').optional().isLength({ min: 6 }).withMessage('Password must be at least 6 characters'),
   body('hourlyRate').optional().isFloat({ min: 0 }),
   createTrainer
 );

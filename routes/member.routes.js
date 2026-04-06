@@ -7,6 +7,7 @@ const {
   cancelMembership,
   checkInToGym,
   getMyCheckIns,
+  getMyBookings,
   getAllMembers,
 } = require('../controllers/member.controller');
 const { verifyToken } = require('../middleware/auth');
@@ -39,6 +40,8 @@ router.post(
 );
 
 router.get('/me/checkins', verifyToken, getMyCheckIns);
+
+router.get('/me/bookings', verifyToken, getMyBookings);
 
 // Admin routes
 router.get(

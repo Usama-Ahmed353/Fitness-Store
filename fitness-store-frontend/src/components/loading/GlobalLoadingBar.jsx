@@ -1,6 +1,6 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useLocation } from 'react-router-dom';
 import { useGlobalLoading } from '../../hooks/useApiLoading';
 import { useTheme } from '../../context/ThemeContext';
 
@@ -9,11 +9,6 @@ import { useTheme } from '../../context/ThemeContext';
  * Shows during:
  * - Route transitions
  * - API loading states
- * 
- * Features:
- * - Auto-increments to ~90% during loading
- * - Completes with animation
- * - Respects dark mode
  */
 export const GlobalLoadingBar = () => {
   const [progress, setProgress] = useState(0);
@@ -21,43 +16,64 @@ export const GlobalLoadingBar = () => {
   const location = useLocation();
   const { isLoading } = useGlobalLoading();
   const { isDark } = useTheme();
+  const prevPathRef = useRef(location.pathname);
+  const timerRef = useRef(null);
+  const intervalRef = useRef(null);
 
-  // Handle route changes
+  // Handle route changes — quick start + finish
   useEffect(() => {
-    // Start progress on route change
-    setProgress(10);
-    setIsVisible(true);
-  }, [location]);
+    if (prevPathRef.current !== location.pathname) {
+      prevPathRef.current = location.pathname;
+
+      setProgress(30);
+      setIsVisible(true);
+
+      // Auto-complete after a short delay (route chunk usually loads quickly)
+      timerRef.current = setTimeout(() => {
+        setProgress(100);
+        setTimeout(() => {
+          setIsVisible(false);
+          setProgress(0);
+        }, 300);
+      }, 200);
+    }
+
+    return () => {
+      if (timerRef.current) clearTimeout(timerRef.current);
+    };
+  }, [location.pathname]);
 
   // Handle API loading state
   useEffect(() => {
     if (isLoading) {
-      // Ensure progress bar is visible
-      if (!isVisible) {
-        setIsVisible(true);
-      }
+      setIsVisible(true);
 
-      // Increment progress step by step
-      const interval = setInterval(() => {
+      intervalRef.current = setInterval(() => {
         setProgress((prev) => {
-          const next = prev + Math.random() * 30; // Random increment
-          return next > 90 ? 90 : next; // Cap at 90%
+          const next = prev + Math.random() * 15;
+          return next > 90 ? 90 : next;
         });
-      }, 200);
-
-      return () => clearInterval(interval);
+      }, 300);
     } else {
-      // Complete the progress bar when loading is done
-      if (progress > 0) {
-        setProgress(100);
-        const timer = setTimeout(() => {
-          setIsVisible(false);
-          setProgress(0);
-        }, 300);
-        return () => clearTimeout(timer);
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+        intervalRef.current = null;
       }
+
+      // Complete the progress bar
+      setProgress(100);
+      const hideTimer = setTimeout(() => {
+        setIsVisible(false);
+        setProgress(0);
+      }, 300);
+
+      return () => clearTimeout(hideTimer);
     }
-  }, [isLoading, progress, isVisible]);
+
+    return () => {
+      if (intervalRef.current) clearInterval(intervalRef.current);
+    };
+  }, [isLoading]);
 
   if (!isVisible) return null;
 

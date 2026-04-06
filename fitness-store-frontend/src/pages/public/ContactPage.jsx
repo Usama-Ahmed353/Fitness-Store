@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
@@ -11,6 +11,7 @@ import Input from '../../components/ui/Input';
 import Card from '../../components/ui/Card';
 import SEO from '../../components/seo/SEO';
 import toast from 'react-hot-toast';
+import { fetchContentByKey } from '../../services/contentService';
 
 const contactSchema = z.object({
   name: z.string().min(2, 'Name required'),
@@ -23,6 +24,22 @@ const ContactPage = () => {
   const navigate = useNavigate();
   const appUrl = import.meta.env.VITE_APP_URL || 'http://localhost:5173';
   const [submitted, setSubmitted] = useState(false);
+  const [contentData, setContentData] = useState(null);
+
+  useEffect(() => {
+    let mounted = true;
+    fetchContentByKey('contact-page')
+      .then((content) => {
+        if (mounted && content) setContentData(content);
+      })
+      .catch(() => {
+        // Keep fallback content until the contact-page entry exists in DB.
+      });
+
+    return () => {
+      mounted = false;
+    };
+  }, []);
 
   const openDirections = (address) => {
     const query = encodeURIComponent(address);
@@ -38,7 +55,7 @@ const ContactPage = () => {
     resolver: zodResolver(contactSchema),
   });
 
-  const gyms = [
+  const gyms = contentData?.gyms || [
     {
       id: 'ts',
       name: 'Times Square',
@@ -68,7 +85,7 @@ const ContactPage = () => {
     },
   ];
 
-  const faqItems = [
+  const faqItems = contentData?.faqItems || [
     {
       q: 'What are your gym hours?',
       a: 'Most locations are open 5am-12am, with some variation. Check your specific gym location for exact hours.',

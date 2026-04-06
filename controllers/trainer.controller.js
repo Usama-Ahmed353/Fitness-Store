@@ -4,18 +4,7 @@ const User = require('../models/User');
 const Gym = require('../models/Gym');
 const Member = require('../models/Member');
 const Notification = require('../models/Notification');
-
-// Define a simple Session model (would need to be created separately)
-const trainerSessionSchema = {
-  _id: 'ObjectId',
-  trainerId: 'ObjectId',
-  memberId: 'ObjectId',
-  scheduledDate: 'Date',
-  duration: 'Number',
-  status: 'String', // scheduled, completed, canceled
-  notes: 'String',
-  createdAt: 'Date',
-};
+const TrainerSession = require('../models/TrainerSession');
 
 // @desc    Get all trainers with filters
 // @route   GET /api/trainers
@@ -160,11 +149,20 @@ exports.bookTrainerSession = async (req, res, next) => {
       return res.status(404).json({ success: false, message: 'Trainer not found' });
     }
 
-    const member = await Member.findOne({ userId: req.user.id, gymId: trainer.gymId });
+    const memberProfiles = await Member.find({
+      userId: req.user.id,
+      membershipStatus: { $ne: 'canceled' },
+    });
+
+    let member = memberProfiles.find((m) => String(m.gymId) === String(trainer.gymId));
+
     if (!member) {
-      return res.status(404).json({
-        success: false,
-        message: 'You must be a member of this gym to book a session',
+      member = await Member.create({
+        userId: req.user.id,
+        gymId: trainer.gymId,
+        membershipPlan: 'base',
+        membershipStatus: 'active',
+        memberSince: new Date(),
       });
     }
 
@@ -177,26 +175,55 @@ exports.bookTrainerSession = async (req, res, next) => {
       hour12: false,
     });
 
-    if (
-      !trainer.availability.days.includes(dayName) ||
-      !trainer.availability.timeSlots.includes(timeSlot)
-    ) {
-      return res.status(400).json({
-        success: false,
-        message: 'Selected time slot is not available',
-      });
+    const normalizeTime = (value) => {
+      if (!value) return '';
+
+      const input = String(value).trim();
+      const ampmMatch = input.match(/^(\d{1,2}):(\d{2})\s*(AM|PM)$/i);
+      if (ampmMatch) {
+        let hh = parseInt(ampmMatch[1], 10);
+        const mm = ampmMatch[2];
+        const ampm = ampmMatch[3].toUpperCase();
+        if (ampm === 'PM' && hh < 12) hh += 12;
+        if (ampm === 'AM' && hh === 12) hh = 0;
+        return `${String(hh).padStart(2, '0')}:${mm}`;
+      }
+
+      const hmMatch = input.match(/^(\d{1,2}):(\d{2})$/);
+      if (hmMatch) {
+        return `${String(parseInt(hmMatch[1], 10)).padStart(2, '0')}:${hmMatch[2]}`;
+      }
+
+      return input;
+    };
+
+    const availableDays = trainer.availability?.days || [];
+    const availableSlots = (trainer.availability?.timeSlots || []).map(normalizeTime);
+    const hasAvailabilityConfig = availableDays.length > 0 && availableSlots.length > 0;
+
+    if (hasAvailabilityConfig) {
+      const dayOk = availableDays.includes(dayName);
+      const slotOk = availableSlots.includes(normalizeTime(timeSlot));
+      if (!dayOk || !slotOk) {
+        return res.status(400).json({
+          success: false,
+          message: 'Selected time slot is not available',
+        });
+      }
     }
 
-    // Create session booking (simplified - would need a TrainerSession model)
-    const session = {
+    const totalCost = (trainer.hourlyRate / 60) * duration;
+
+    const session = await TrainerSession.create({
       trainerId: id,
       memberId: member._id,
+      gymId: trainer.gymId,
       scheduledDate: new Date(scheduledDate),
       duration,
       status: 'scheduled',
-      notes,
-      createdAt: new Date(),
-    };
+      notes: notes || '',
+      totalCost,
+    });
 
     // Send notification to trainer
     const user = await User.findById(req.user.id);
@@ -205,18 +232,45 @@ exports.bookTrainerSession = async (req, res, next) => {
       type: 'session_booking',
       title: 'New PT Session Booked',
       message: `${user.firstName} ${user.lastName} has booked a ${duration}-minute session on ${sessionDate.toDateString()}`,
-      data: session,
+      data: {
+        sessionId: session._id,
+        trainerId: trainer._id,
+        memberId: member._id,
+        scheduledDate: session.scheduledDate,
+        duration: session.duration,
+      },
+    });
+
+    const trainerUser = await User.findById(trainer.userId);
+
+    await Notification.create({
+      userId: req.user.id,
+      type: 'session_booking',
+      title: 'PT Session Confirmed',
+      message: `Your session with ${trainerUser?.firstName || 'your trainer'} ${trainerUser?.lastName || ''}`.trim() + ` is booked for ${sessionDate.toDateString()}`,
+      data: {
+        sessionId: session._id,
+        trainerId: trainer._id,
+        scheduledDate: session.scheduledDate,
+      },
     });
 
     res.status(201).json({
       success: true,
       message: 'PT session booked successfully',
       data: {
-        ...session,
+        _id: session._id,
         trainerId: trainer._id,
-        trainerName: (await User.findById(trainer.userId)).firstName,
+        trainerName: `${trainerUser?.firstName || ''} ${trainerUser?.lastName || ''}`.trim(),
+        memberId: member._id,
+        gymId: trainer.gymId,
+        scheduledDate: session.scheduledDate,
+        duration: session.duration,
+        status: session.status,
+        notes: session.notes,
         hourlyRate: trainer.hourlyRate,
-        totalCost: (trainer.hourlyRate / 60) * duration,
+        totalCost,
+        createdAt: session.createdAt,
       },
     });
   } catch (error) {
@@ -237,6 +291,11 @@ exports.createTrainer = async (req, res, next) => {
     const {
       userId,
       gymId,
+      firstName,
+      lastName,
+      email,
+      password,
+      phone,
       bio,
       specializations,
       certifications,
@@ -259,8 +318,46 @@ exports.createTrainer = async (req, res, next) => {
       });
     }
 
+    let resolvedUserId = userId;
+
+    if (!resolvedUserId) {
+      if (!firstName || !lastName || !email || !password) {
+        return res.status(400).json({
+          success: false,
+          message: 'Provide userId or trainer account details (firstName, lastName, email, password)',
+        });
+      }
+
+      const existingUser = await User.findOne({ email: String(email).toLowerCase() });
+      if (existingUser) {
+        return res.status(400).json({
+          success: false,
+          message: 'A user with this email already exists. Use their userId instead.',
+        });
+      }
+
+      const createdUser = await User.create({
+        firstName,
+        lastName,
+        email,
+        password,
+        phone,
+        role: 'trainer',
+      });
+      resolvedUserId = createdUser._id;
+    } else {
+      const existing = await User.findById(resolvedUserId);
+      if (!existing) {
+        return res.status(404).json({ success: false, message: 'Trainer user not found' });
+      }
+      if (existing.role !== 'trainer') {
+        existing.role = 'trainer';
+        await existing.save();
+      }
+    }
+
     // Check if trainer already exists
-    const existingTrainer = await Trainer.findOne({ userId, gymId });
+    const existingTrainer = await Trainer.findOne({ userId: resolvedUserId, gymId });
     if (existingTrainer) {
       return res.status(400).json({
         success: false,
@@ -269,7 +366,7 @@ exports.createTrainer = async (req, res, next) => {
     }
 
     const trainer = await Trainer.create({
-      userId,
+      userId: resolvedUserId,
       gymId,
       bio,
       specializations: specializations ? specializations.split(',').map((s) => s.trim()) : [],
@@ -362,20 +459,125 @@ exports.getTrainerSessions = async (req, res, next) => {
       return res.status(404).json({ success: false, message: 'Trainer not found' });
     }
 
-    // This would query a TrainerSession model (simplified response)
+    const gym = await Gym.findById(trainer.gymId);
+    const canAccess =
+      req.user.id === trainer.userId.toString() ||
+      ['admin', 'super_admin'].includes(req.user.role) ||
+      (gym && gym.ownerId && gym.ownerId.toString() === req.user.id);
+
+    if (!canAccess) {
+      return res.status(403).json({
+        success: false,
+        message: 'You do not have permission to view these sessions',
+      });
+    }
+
     const query = { trainerId: id };
     if (status) query.status = status;
 
-    // Placeholder: would be replaced with actual TrainerSession queries
+    const sessions = await TrainerSession.find(query)
+      .populate({ path: 'memberId', select: 'userId', populate: { path: 'userId', select: 'firstName lastName email profilePhoto' } })
+      .sort({ scheduledDate: -1 })
+      .skip(skip)
+      .limit(parseInt(limit));
+
+    const total = await TrainerSession.countDocuments(query);
+
     res.status(200).json({
       success: true,
-      data: [],
-      message: 'Trainer sessions endpoint (implement TrainerSession model)',
+      data: sessions,
       pagination: {
-        total: 0,
+        total,
         page: parseInt(page),
         limit: parseInt(limit),
-        pages: 0,
+        pages: Math.ceil(total / limit),
+      },
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// @desc    Get sessions for logged-in member
+// @route   GET /api/trainers/sessions/my
+// @access  Private
+exports.getMyTrainerSessions = async (req, res, next) => {
+  try {
+    const { status, page = 1, limit = 20 } = req.query;
+    const skip = (page - 1) * limit;
+
+    const members = await Member.find({ userId: req.user.id }).select('_id');
+    const memberIds = members.map((m) => m._id);
+
+    if (!memberIds.length) {
+      return res.status(200).json({
+        success: true,
+        data: [],
+        pagination: {
+          total: 0,
+          page: parseInt(page),
+          limit: parseInt(limit),
+          pages: 0,
+        },
+      });
+    }
+
+    const query = { memberId: { $in: memberIds } };
+    if (status) query.status = status;
+
+    const sessions = await TrainerSession.find(query)
+      .populate({ path: 'trainerId', populate: [{ path: 'userId', select: 'firstName lastName profilePhoto' }, { path: 'gymId', select: 'name' }] })
+      .sort({ scheduledDate: -1 })
+      .skip(skip)
+      .limit(parseInt(limit));
+
+    const total = await TrainerSession.countDocuments(query);
+
+    res.status(200).json({
+      success: true,
+      data: sessions,
+      pagination: {
+        total,
+        page: parseInt(page),
+        limit: parseInt(limit),
+        pages: Math.ceil(total / limit),
+      },
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// @desc    Get all trainer sessions for admin
+// @route   GET /api/trainers/admin/sessions
+// @access  Private (admin, super_admin)
+exports.getAdminTrainerSessions = async (req, res, next) => {
+  try {
+    const { status, trainerId, gymId, page = 1, limit = 20 } = req.query;
+    const skip = (page - 1) * limit;
+
+    const query = {};
+    if (status) query.status = status;
+    if (trainerId) query.trainerId = trainerId;
+    if (gymId) query.gymId = gymId;
+
+    const sessions = await TrainerSession.find(query)
+      .populate({ path: 'trainerId', select: 'userId gymId hourlyRate', populate: [{ path: 'userId', select: 'firstName lastName email' }, { path: 'gymId', select: 'name' }] })
+      .populate({ path: 'memberId', select: 'userId', populate: { path: 'userId', select: 'firstName lastName email' } })
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(parseInt(limit));
+
+    const total = await TrainerSession.countDocuments(query);
+
+    res.status(200).json({
+      success: true,
+      data: sessions,
+      pagination: {
+        total,
+        page: parseInt(page),
+        limit: parseInt(limit),
+        pages: Math.ceil(total / limit),
       },
     });
   } catch (error) {

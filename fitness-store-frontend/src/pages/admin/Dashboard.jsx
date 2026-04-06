@@ -4,7 +4,7 @@ import { motion } from 'framer-motion';
 import { Helmet } from 'react-helmet-async';
 import {
   Users, Package, ShoppingCart, DollarSign, TrendingUp,
-  ArrowRight, Clock, Truck, CheckCircle, XCircle, Eye
+  ArrowRight, Clock, Truck, CheckCircle, XCircle, Eye, Calendar
 } from 'lucide-react';
 import axios from 'axios';
 import { useSelector } from 'react-redux';
@@ -45,6 +45,8 @@ const AdminDashboard = () => {
     { label: 'Total Orders', value: orderData?.totalOrders || 0, icon: ShoppingCart, color: 'from-purple-500 to-purple-700', link: '/admin/orders' },
     { label: 'Revenue', value: `$${(orderData?.totalRevenue || 0).toLocaleString()}`, icon: DollarSign, color: 'from-green-500 to-green-700', link: '/admin/orders' },
     { label: 'Products', value: totalProducts, icon: Package, color: 'from-orange-500 to-orange-700', link: '/admin/products' },
+    { label: 'Class Bookings', value: metrics.totalClassBookings || 0, icon: Calendar, color: 'from-cyan-500 to-cyan-700', link: '/admin/classes' },
+    { label: 'PT Sessions', value: metrics.totalTrainerSessions || 0, icon: TrendingUp, color: 'from-rose-500 to-rose-700', link: '/admin/trainers' },
   ];
 
   const orderStatusCards = [
@@ -72,15 +74,15 @@ const AdminDashboard = () => {
           </div>
 
           {loading ? (
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-              {Array.from({ length: 4 }).map((_, i) => (
+            <div className="grid grid-cols-2 lg:grid-cols-6 gap-4 mb-8">
+              {Array.from({ length: 6 }).map((_, i) => (
                 <div key={i} className="bg-white/5 rounded-xl h-28 animate-pulse" />
               ))}
             </div>
           ) : (
             <>
               {/* KPI Cards */}
-              <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+              <div className="grid grid-cols-2 lg:grid-cols-6 gap-4 mb-8">
                 {kpiCards.map((kpi) => (
                   <motion.div
                     key={kpi.label}

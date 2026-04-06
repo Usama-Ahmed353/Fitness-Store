@@ -5,6 +5,8 @@ const User = require('../models/User');
 const Gym = require('../models/Gym');
 const Member = require('../models/Member');
 const Payment = require('../models/Payment');
+const ClassBooking = require('../models/ClassBooking');
+const TrainerSession = require('../models/TrainerSession');
 
 /**
  * Middleware: Check if user is admin
@@ -81,6 +83,8 @@ router.get('/users', verifyToken, checkAdmin, async (req, res) => {
  */
 router.get('/analytics', verifyToken, checkAdmin, async (req, res) => {
   try {
+    const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+
     const totalUsers = await User.countDocuments();
     const totalGyms = await Gym.countDocuments();
     const totalMembers = await Member.countDocuments();
@@ -112,6 +116,22 @@ router.get('/analytics', verifyToken, checkAdmin, async (req, res) => {
       { $limit: 12 },
     ]);
 
+    const [
+      totalClassBookings,
+      activeClassBookings,
+      totalTrainerSessions,
+      scheduledTrainerSessions,
+      classBookingsLast30Days,
+      trainerSessionsLast30Days,
+    ] = await Promise.all([
+      ClassBooking.countDocuments(),
+      ClassBooking.countDocuments({ status: 'booked' }),
+      TrainerSession.countDocuments(),
+      TrainerSession.countDocuments({ status: 'scheduled' }),
+      ClassBooking.countDocuments({ createdAt: { $gte: thirtyDaysAgo } }),
+      TrainerSession.countDocuments({ createdAt: { $gte: thirtyDaysAgo } }),
+    ]);
+
     res.status(200).json({
       success: true,
       data: {
@@ -124,6 +144,12 @@ router.get('/analytics', verifyToken, checkAdmin, async (req, res) => {
           averageOrderValue:
             totalRevenue[0]?.total &&
             Math.round(totalRevenue[0].total / totalUsers),
+          totalClassBookings,
+          activeClassBookings,
+          totalTrainerSessions,
+          scheduledTrainerSessions,
+          classBookingsLast30Days,
+          trainerSessionsLast30Days,
         },
         monthlyRevenue,
       },

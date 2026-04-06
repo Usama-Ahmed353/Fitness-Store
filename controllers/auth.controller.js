@@ -30,7 +30,7 @@ const getFrontendUrl = () => process.env.FRONTEND_URL || 'http://localhost:5173'
 // @access  Public
 exports.register = async (req, res, next) => {
   try {
-    const { firstName, lastName, email, password } = req.body;
+    const { firstName, lastName, email, password, phone, accountType } = req.body;
 
     // Validate required fields
     if (!firstName || !lastName || !email || !password) {
@@ -49,13 +49,22 @@ exports.register = async (req, res, next) => {
       });
     }
 
+    const roleMap = {
+      member: 'member',
+      trainer: 'trainer',
+      gym_owner: 'gym_owner',
+      'gym-owner': 'gym_owner',
+    };
+    const resolvedRole = roleMap[String(accountType || 'member').toLowerCase()] || 'member';
+
     // Create user
     user = await User.create({
       firstName,
       lastName,
       email,
       password,
-      role: 'member',
+      role: resolvedRole,
+      phone: phone || undefined,
     });
 
     // Generate email verification token
