@@ -8,9 +8,9 @@ const User = require('../models/User');
 // @access  Public
 exports.search = async (req, res, next) => {
   try {
-    const { q } = req.query;
+    const q = (req.query.q || req.query.query || '').trim();
 
-    if (!q || q.trim().length < 2) {
+    if (q.length < 2) {
       return res.status(400).json({
         success: false,
         message: 'Search query must be at least 2 characters',
@@ -20,52 +20,43 @@ exports.search = async (req, res, next) => {
     const searchRegex = new RegExp(q, 'i');
 
     // Search gyms
-    const gyms = await Gym.find(
-      {
-        $or: [
-          { name: searchRegex },
-          { description: searchRegex },
-          { 'address.city': searchRegex },
-          { amenities: { $in: [searchRegex] } },
-        ],
-        isActive: true,
-        isVerified: true,
-      },
-      { score: { $meta: 'textScore' } }
-    )
+    const gyms = await Gym.find({
+      $or: [
+        { name: searchRegex },
+        { description: searchRegex },
+        { 'address.city': searchRegex },
+        { amenities: { $in: [searchRegex] } },
+      ],
+      isActive: true,
+      isVerified: true,
+    })
       .sort({ rating: -1 })
       .limit(10);
 
     // Search classes
-    const classes = await Class.find(
-      {
-        $or: [
-          { name: searchRegex },
-          { description: searchRegex },
-          { category: searchRegex },
-          { tags: { $in: [searchRegex] } },
-        ],
-        isActive: true,
-        isCanceled: false,
-      },
-      { score: { $meta: 'textScore' } }
-    )
+    const classes = await Class.find({
+      $or: [
+        { name: searchRegex },
+        { description: searchRegex },
+        { category: searchRegex },
+        { tags: { $in: [searchRegex] } },
+      ],
+      isActive: true,
+      isCanceled: false,
+    })
       .populate('instructorId', 'firstName lastName')
       .populate('gymId', 'name slug')
       .limit(10);
 
     // Search trainers
-    const trainers = await Trainer.find(
-      {
-        $or: [
-          { bio: searchRegex },
-          { specializations: { $in: [searchRegex] } },
-          { certifications: { $in: [searchRegex] } },
-        ],
-        isActive: true,
-      },
-      { score: { $meta: 'textScore' } }
-    )
+    const trainers = await Trainer.find({
+      $or: [
+        { bio: searchRegex },
+        { specializations: { $in: [searchRegex] } },
+        { certifications: { $in: [searchRegex] } },
+      ],
+      isActive: true,
+    })
       .populate('userId', 'firstName lastName profilePhoto')
       .populate('gymId', 'name slug')
       .limit(10);

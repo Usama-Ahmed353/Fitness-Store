@@ -30,6 +30,68 @@ const CATEGORY_LABELS = {
   other: 'Other',
 };
 
+const isPlaceholderImage = (url = '') => {
+  if (!url || typeof url !== 'string') return true;
+  const normalized = url.toLowerCase();
+  return (
+    normalized.includes('via.placeholder.com') ||
+    normalized.includes('placeholder.com') ||
+    normalized.includes('placehold.co') ||
+    normalized.includes('dummyimage.com') ||
+    normalized.includes('text=')
+  );
+};
+
+const getCategoryVisual = (category) => {
+  const key = String(category || '').toLowerCase();
+  if (key === 'supplements' || key === 'nutrition' || key === 'recovery') {
+    return {
+      gradient: 'from-emerald-600 via-teal-600 to-cyan-700',
+      accent: 'bg-emerald-300/20 text-emerald-100',
+      emoji: '🧪',
+      label: 'Fuel',
+    };
+  }
+  if (key === 'equipment' || key === 'strength') {
+    return {
+      gradient: 'from-orange-600 via-amber-600 to-yellow-700',
+      accent: 'bg-orange-300/20 text-orange-100',
+      emoji: '🏋️',
+      label: 'Power',
+    };
+  }
+  if (key === 'cardio') {
+    return {
+      gradient: 'from-rose-600 via-red-600 to-orange-700',
+      accent: 'bg-red-300/20 text-red-100',
+      emoji: '🏃',
+      label: 'Cardio',
+    };
+  }
+  if (key === 'apparel') {
+    return {
+      gradient: 'from-indigo-600 via-blue-600 to-cyan-700',
+      accent: 'bg-blue-300/20 text-blue-100',
+      emoji: '👕',
+      label: 'Wear',
+    };
+  }
+  if (key === 'accessories' || key === 'yoga') {
+    return {
+      gradient: 'from-fuchsia-600 via-purple-600 to-indigo-700',
+      accent: 'bg-fuchsia-300/20 text-fuchsia-100',
+      emoji: '🧘',
+      label: 'Flow',
+    };
+  }
+  return {
+    gradient: 'from-slate-600 via-slate-700 to-gray-800',
+    accent: 'bg-slate-300/20 text-slate-100',
+    emoji: '💪',
+    label: 'Fit',
+  };
+};
+
 const ShopPage = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
@@ -305,11 +367,11 @@ const ShopPage = () => {
                 onChange={(e) => { setFilters({ ...filters, sort: e.target.value }); }}
                 className="bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-sm text-white"
               >
-                <option value="-createdAt">Newest</option>
-                <option value="price">Price: Low to High</option>
-                <option value="-price">Price: High to Low</option>
-                <option value="-ratings.average">Top Rated</option>
-                <option value="-viewCount">Most Popular</option>
+                <option value="-createdAt" className="bg-white text-gray-900">Newest</option>
+                <option value="price" className="bg-white text-gray-900">Price: Low to High</option>
+                <option value="-price" className="bg-white text-gray-900">Price: High to Low</option>
+                <option value="-ratings.average" className="bg-white text-gray-900">Top Rated</option>
+                <option value="-viewCount" className="bg-white text-gray-900">Most Popular</option>
               </select>
             </div>
           </div>
@@ -321,18 +383,18 @@ const ShopPage = () => {
                 <div>
                   <label className="block text-sm text-gray-400 mb-1">Category</label>
                   <select value={filters.category} onChange={(e) => setFilters({ ...filters, category: e.target.value })} className="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-white">
-                    <option value="">All Categories</option>
+                    <option value="" className="bg-white text-gray-900">All Categories</option>
                     {categories.map((c) => (
-                      <option key={c._id} value={c._id}>{CATEGORY_LABELS[c._id] || c._id} ({c.count})</option>
+                      <option key={c._id} value={c._id} className="bg-white text-gray-900">{CATEGORY_LABELS[c._id] || c._id} ({c.count})</option>
                     ))}
                   </select>
                 </div>
                 <div>
                   <label className="block text-sm text-gray-400 mb-1">Brand</label>
                   <select value={filters.brand} onChange={(e) => setFilters({ ...filters, brand: e.target.value })} className="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-white">
-                    <option value="">All Brands</option>
+                    <option value="" className="bg-white text-gray-900">All Brands</option>
                     {brands.map((b) => (
-                      <option key={b._id} value={b._id}>{b._id} ({b.count})</option>
+                      <option key={b._id} value={b._id} className="bg-white text-gray-900">{b._id} ({b.count})</option>
                     ))}
                   </select>
                 </div>
@@ -349,10 +411,10 @@ const ShopPage = () => {
                 <div>
                   <label className="block text-sm text-gray-400 mb-1">Min Rating</label>
                   <select value={filters.minRating} onChange={(e) => setFilters({ ...filters, minRating: e.target.value })} className="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-white">
-                    <option value="">Any Rating</option>
-                    <option value="4">4+ Stars</option>
-                    <option value="3">3+ Stars</option>
-                    <option value="2">2+ Stars</option>
+                    <option value="" className="bg-white text-gray-900">Any Rating</option>
+                    <option value="4" className="bg-white text-gray-900">4+ Stars</option>
+                    <option value="3" className="bg-white text-gray-900">3+ Stars</option>
+                    <option value="2" className="bg-white text-gray-900">2+ Stars</option>
                   </select>
                 </div>
               </div>
@@ -428,9 +490,15 @@ const ShopPage = () => {
 };
 
 const ProductCard = ({ product, onAddToCart, onWishlist, isWishlisted, navigate }) => {
+  const [imageFailed, setImageFailed] = useState(false);
+
   const finalPrice = product.discount > 0
     ? Math.round(product.price * (1 - product.discount / 100) * 100) / 100
     : product.price;
+
+  const primaryImageUrl = product.images?.[0]?.url || '';
+  const useVisualCover = imageFailed || isPlaceholderImage(primaryImageUrl);
+  const visual = getCategoryVisual(product.category);
 
   return (
     <motion.div
@@ -439,10 +507,25 @@ const ProductCard = ({ product, onAddToCart, onWishlist, isWishlisted, navigate 
       className="bg-white/5 rounded-xl overflow-hidden group hover:bg-white/10 transition-all duration-300"
     >
       <div className="relative aspect-square bg-white/5 cursor-pointer" onClick={() => navigate(`/product/${product.slug}`)}>
-        {product.images?.[0]?.url ? (
-          <img src={product.images[0].url} alt={product.images[0].alt || product.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
+        {!useVisualCover ? (
+          <img
+            src={primaryImageUrl}
+            alt={product.images?.[0]?.alt || product.title}
+            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+            onError={() => setImageFailed(true)}
+          />
         ) : (
-          <div className="w-full h-full flex items-center justify-center text-gray-500">No Image</div>
+          <div className={`w-full h-full bg-gradient-to-br ${visual.gradient} p-4 flex flex-col items-center justify-center text-center`}>
+            <div className={`h-16 w-16 rounded-2xl ${visual.accent} flex items-center justify-center text-3xl shadow-lg`}>
+              {visual.emoji}
+            </div>
+            <div className="mt-3 text-white/90 text-xs font-semibold uppercase tracking-wider">
+              {visual.label}
+            </div>
+            <div className="mt-1 text-white text-sm font-bold line-clamp-2 px-2">
+              {product.title}
+            </div>
+          </div>
         )}
         {product.discount > 0 && (
           <span className="absolute top-3 left-3 bg-accent text-white text-xs font-bold px-2 py-1 rounded">-{product.discount}%</span>

@@ -1,7 +1,8 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import axios from 'axios';
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api';
+const runtimeHost = typeof window !== 'undefined' ? window.location.hostname : 'localhost';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || `http://${runtimeHost}:5001/api`;
 
 // Async Thunks
 export const fetchTrainers = createAsyncThunk(
@@ -10,7 +11,7 @@ export const fetchTrainers = createAsyncThunk(
     try {
       const params = new URLSearchParams(filters);
       const response = await axios.get(`${API_BASE_URL}/trainers?${params}`);
-      return response.data.trainers;
+      return response.data?.data || [];
     } catch (error) {
       return rejectWithValue(error.response?.data?.message || 'Failed to fetch trainers');
     }
@@ -22,7 +23,7 @@ export const fetchTrainerDetails = createAsyncThunk(
   async (trainerId, { rejectWithValue }) => {
     try {
       const response = await axios.get(`${API_BASE_URL}/trainers/${trainerId}`);
-      return response.data.trainer;
+      return response.data?.data || null;
     } catch (error) {
       return rejectWithValue(error.response?.data?.message || 'Failed to fetch trainer details');
     }
@@ -34,10 +35,10 @@ export const bookTrainerSession = createAsyncThunk(
   async ({ trainerId, memberId, sessionData }, { rejectWithValue }) => {
     try {
       const response = await axios.post(
-        `${API_BASE_URL}/trainers/${trainerId}/book`,
+        `${API_BASE_URL}/trainers/${trainerId}/book-session`,
         { memberId, ...sessionData }
       );
-      return response.data.booking;
+      return response.data?.data || null;
     } catch (error) {
       return rejectWithValue(error.response?.data?.message || 'Failed to book session');
     }
@@ -46,18 +47,7 @@ export const bookTrainerSession = createAsyncThunk(
 
 export const rateTrainer = createAsyncThunk(
   'trainers/rateTrainer',
-  async ({ trainerId, memberId, rating, comment }, { rejectWithValue }) => {
-    try {
-      const response = await axios.post(`${API_BASE_URL}/trainers/${trainerId}/rate`, {
-        memberId,
-        rating,
-        comment,
-      });
-      return response.data.review;
-    } catch (error) {
-      return rejectWithValue(error.response?.data?.message || 'Failed to rate trainer');
-    }
-  }
+  async (_, { rejectWithValue }) => rejectWithValue('Trainer rating endpoint is not available yet')
 );
 
 // Slice

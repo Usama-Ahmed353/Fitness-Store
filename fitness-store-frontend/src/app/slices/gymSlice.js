@@ -1,7 +1,8 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import axios from 'axios';
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api';
+const runtimeHost = typeof window !== 'undefined' ? window.location.hostname : 'localhost';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || `http://${runtimeHost}:5001/api`;
 
 // Async Thunks
 export const fetchGyms = createAsyncThunk(
@@ -10,7 +11,7 @@ export const fetchGyms = createAsyncThunk(
     try {
       const params = new URLSearchParams(filters);
       const response = await axios.get(`${API_BASE_URL}/gyms?${params}`);
-      return response.data.gyms;
+      return response.data?.data || [];
     } catch (error) {
       return rejectWithValue(error.response?.data?.message || 'Failed to fetch gyms');
     }
@@ -22,7 +23,7 @@ export const fetchGymDetails = createAsyncThunk(
   async (gymId, { rejectWithValue }) => {
     try {
       const response = await axios.get(`${API_BASE_URL}/gyms/${gymId}`);
-      return response.data.gym;
+      return response.data?.data || null;
     } catch (error) {
       return rejectWithValue(error.response?.data?.message || 'Failed to fetch gym details');
     }

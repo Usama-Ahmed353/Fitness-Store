@@ -3,16 +3,36 @@ import { useDispatch, useSelector } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 import { motion } from 'framer-motion';
+import { CardElement, Elements, useElements, useStripe } from '@stripe/react-stripe-js';
+import { loadStripe } from '@stripe/stripe-js';
 import { CreditCard, Lock, CheckCircle, ArrowLeft, Loader } from 'lucide-react';
 import { createOrder, confirmPayment, clearClientSecret } from '../../app/slices/orderSlice';
 import { resetCart } from '../../app/slices/cartSlice';
 import toast from 'react-hot-toast';
 
-const CheckoutPage = () => {
+const STRIPE_PUBLISHABLE_KEY = import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY || '';
+const stripePromise = loadStripe(STRIPE_PUBLISHABLE_KEY || 'pk_test_placeholder');
+
+const cardElementOptions = {
+  style: {
+    base: {
+      color: '#ffffff',
+      fontSize: '16px',
+      '::placeholder': { color: '#9ca3af' },
+    },
+    invalid: {
+      color: '#f87171',
+    },
+  },
+};
+
+const CheckoutContent = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
+  const stripe = useStripe();
+  const elements = useElements();
   const { items, subtotal, itemCount } = useSelector((s) => s.cart);
-  const { loading: orderLoading, error: orderError, selectedOrder, clientSecret } = useSelector((s) => s.orders);
+  const { loading: orderLoading, error: orderError, selectedOrder } = useSelector((s) => s.orders);
   const { user } = useSelector((s) => s.auth);
 
   const [step, setStep] = useState(1); // 1: shipping, 2: payment, 3: confirmation
@@ -29,7 +49,7 @@ const CheckoutPage = () => {
   useEffect(() => {
     if (items.length === 0 && step === 1) navigate('/cart');
     return () => { dispatch(clearClientSecret()); };
-  }, []);
+  }, [dispatch, items.length, navigate, step]);
 
   const shippingCost = subtotal >= 50 ? 0 : 5.99;
   const tax = Math.round(subtotal * 0.08 * 100) / 100;
@@ -44,16 +64,61 @@ const CheckoutPage = () => {
   };
 
   const handlePlaceOrder = async () => {
-    const result = await dispatch(createOrder({ shippingAddress: shipping }));
-    if (!result.error) {
-      // Simulate successful payment for sandbox
-      const order = result.payload.order;
-      await dispatch(confirmPayment(order._id));
+    if (!stripe || !elements) {
+      toast.error('Payment form is still loading. Please wait a moment.');
+      return;
+    }
+
+    const cardElement = elements.getElement(CardElement);
+    if (!cardElement) {
+      toast.error('Card input is not ready. Please refresh and try again.');
+      return;
+    }
+
+    const createResult = await dispatch(createOrder({ shippingAddress: shipping }));
+    if (createResult.error) {
+      toast.error(createResult.payload || 'Failed to create order');
+      return;
+    }
+
+    const order = createResult.payload.order;
+    const secret = createResult.payload.clientSecret;
+
+    const { error: stripeError, paymentIntent } = await stripe.confirmCardPayment(secret, {
+      payment_method: {
+        card: cardElement,
+        billing_details: {
+          name: shipping.fullName,
+          email: user?.email || undefined,
+          phone: shipping.phone || undefined,
+          address: {
+            line1: shipping.street,
+            city: shipping.city,
+            state: shipping.state,
+            postal_code: shipping.zip,
+            country: shipping.country,
+          },
+        },
+      },
+    });
+
+    if (stripeError) {
+      toast.error(stripeError.message || 'Payment failed. Please check card details.');
+      return;
+    }
+
+    if (!paymentIntent || paymentIntent.status !== 'succeeded') {
+      toast.error('Payment was not completed. Please try again.');
+      return;
+    }
+
+    const confirmResult = await dispatch(confirmPayment(order._id));
+    if (!confirmResult.error) {
       dispatch(resetCart());
       setStep(3);
       toast.success('Order placed successfully!');
     } else {
-      toast.error(result.payload || 'Failed to create order');
+      toast.error(confirmResult.payload || 'Payment captured but order confirmation failed.');
     }
   };
 
@@ -148,26 +213,19 @@ const CheckoutPage = () => {
                       <Lock className="w-5 h-5 text-green-400" />
                       <span className="text-sm text-gray-400">Your payment info is secure (Stripe sandbox)</span>
                     </div>
-                    <div className="space-y-4">
-                      <div>
-                        <label className="block text-sm text-gray-400 mb-1">Card Number</label>
-                        <input type="text" placeholder="4242 4242 4242 4242" className="w-full bg-white/10 border border-white/20 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-accent" />
-                      </div>
-                      <div className="grid grid-cols-2 gap-4">
-                        <div>
-                          <label className="block text-sm text-gray-400 mb-1">Expiry</label>
-                          <input type="text" placeholder="12/28" className="w-full bg-white/10 border border-white/20 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-accent" />
-                        </div>
-                        <div>
-                          <label className="block text-sm text-gray-400 mb-1">CVC</label>
-                          <input type="text" placeholder="123" className="w-full bg-white/10 border border-white/20 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-accent" />
-                        </div>
-                      </div>
+                    {!STRIPE_PUBLISHABLE_KEY && (
+                      <p className="mb-3 rounded-lg border border-yellow-500/40 bg-yellow-500/10 px-3 py-2 text-sm text-yellow-300">
+                        Missing VITE_STRIPE_PUBLISHABLE_KEY. Add your Stripe test publishable key to complete checkout.
+                      </p>
+                    )}
+                    <label className="block text-sm text-gray-400 mb-2">Card Details</label>
+                    <div className="rounded-lg border border-white/20 bg-white/10 px-4 py-3">
+                      <CardElement options={cardElementOptions} />
                     </div>
                   </div>
                   <div className="flex gap-3">
                     <button onClick={() => setStep(1)} className="px-6 py-3 bg-white/10 rounded-lg hover:bg-white/20">Back</button>
-                    <button onClick={handlePlaceOrder} disabled={orderLoading} className="flex-1 flex items-center justify-center gap-2 py-3 bg-accent text-white rounded-lg hover:bg-accent/90 font-semibold disabled:opacity-50">
+                    <button onClick={handlePlaceOrder} disabled={orderLoading || !STRIPE_PUBLISHABLE_KEY || !stripe || !elements} className="flex-1 flex items-center justify-center gap-2 py-3 bg-accent text-white rounded-lg hover:bg-accent/90 font-semibold disabled:opacity-50">
                       {orderLoading ? <Loader className="w-5 h-5 animate-spin" /> : <Lock className="w-4 h-4" />}
                       {orderLoading ? 'Processing...' : `Pay $${total.toFixed(2)}`}
                     </button>
@@ -211,5 +269,11 @@ const CheckoutPage = () => {
     </>
   );
 };
+
+const CheckoutPage = () => (
+  <Elements stripe={stripePromise}>
+    <CheckoutContent />
+  </Elements>
+);
 
 export default CheckoutPage;

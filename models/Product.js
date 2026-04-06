@@ -120,14 +120,13 @@ const productSchema = new mongoose.Schema(
 );
 
 // Generate slug from title before saving
-productSchema.pre('save', function (next) {
+productSchema.pre('save', function () {
   if (this.isModified('title')) {
     this.slug = this.title
       .toLowerCase()
       .replace(/[^a-z0-9]+/g, '-')
       .replace(/(^-|-$)/g, '');
   }
-  next();
 });
 
 // Computed field: final price after discount

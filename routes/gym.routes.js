@@ -10,6 +10,7 @@ const {
   getGymTrainers,
   getGymReviews,
   deleteGym,
+  getOwnerDashboard,
 } = require('../controllers/gym.controller');
 const { verifyToken } = require('../middleware/auth');
 const { authorize } = require('../middleware/roleCheck');
@@ -27,6 +28,8 @@ router.get(
   query('radius').optional().isInt({ min: 1 }),
   getGyms
 );
+
+router.get('/owner/dashboard', verifyToken, authorize('gym_owner'), getOwnerDashboard);
 
 router.get('/:slug', getGymBySlug);
 

@@ -1,6 +1,6 @@
 import { createContext, useContext, useEffect, useState } from 'react';
 
-const ThemeContext = createContext();
+export const ThemeContext = createContext();
 
 export const useTheme = () => {
   const context = useContext(ThemeContext);
@@ -72,9 +72,11 @@ export const ThemeProvider = ({ children }) => {
   }, []);
 
   const toggleTheme = () => setIsDark(!isDark);
+  const theme = isDark ? 'dark' : 'light';
+  const setTheme = (nextTheme) => setIsDark(nextTheme === 'dark');
 
   return (
-    <ThemeContext.Provider value={{ isDark, toggleTheme }}>
+    <ThemeContext.Provider value={{ isDark, toggleTheme, theme, setTheme }}>
       {children}
     </ThemeContext.Provider>
   );

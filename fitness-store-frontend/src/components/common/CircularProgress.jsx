@@ -6,6 +6,14 @@ const CircularProgress = ({ current, goal, color = 'text-accent', label, size = 
   const circumference = 2 * Math.PI * (size / 2 - 8);
   const offset = circumference - (percentage / 100) * circumference;
 
+  // Handle untranslated i18n keys like "nutrition.calories" gracefully.
+  const normalizedLabel = (() => {
+    if (!label || typeof label !== 'string') return '';
+    if (!label.includes('.')) return label;
+    const last = label.split('.').pop() || label;
+    return last.charAt(0).toUpperCase() + last.slice(1);
+  })();
+
   return (
     <div className="relative inline-flex items-center justify-center">
       <svg width={size} height={size} className="transform -rotate-90">
@@ -31,13 +39,13 @@ const CircularProgress = ({ current, goal, color = 'text-accent', label, size = 
       </svg>
 
       {/* Center text */}
-      <div className="absolute text-center">
+      <div className="absolute text-center px-1 max-w-[78px]">
         <p className={`text-xl font-bold ${color}`}>
           {Math.round(percentage)}%
         </p>
-        {label && (
-          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-            {label}
+        {normalizedLabel && (
+          <p className="text-[11px] leading-tight text-gray-500 dark:text-gray-400 mt-1 truncate">
+            {normalizedLabel}
           </p>
         )}
       </div>

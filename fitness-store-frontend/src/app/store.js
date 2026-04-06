@@ -22,9 +22,15 @@ import cartReducer from './slices/cartSlice';
 import orderReducer from './slices/orderSlice';
 import wishlistReducer from './slices/wishlistSlice';
 import chatReducer from './slices/chatSlice';
+import challengeReducer from './slices/challengeSlice';
 import { setProductStoreRef } from './slices/productSlice';
 import { setCartStoreRef } from './slices/cartSlice';
 import { setChatStoreRef } from './slices/chatSlice';
+import { setClassStoreRef } from './slices/classSlice';
+import { setMemberStoreRef } from './slices/memberSlice';
+import { setOrderStoreRef } from './slices/orderSlice';
+import { setWishlistStoreRef } from './slices/wishlistSlice';
+import { setChallengeStoreRef } from './slices/challengeSlice';
 
 // Create a localStorage wrapper that works in all environments
 const storage = {
@@ -90,6 +96,7 @@ export const store = configureStore({
     orders: orderReducer,
     wishlist: wishlistReducer,
     chat: chatReducer,
+    challenges: challengeReducer,
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware({
@@ -102,5 +109,10 @@ export const store = configureStore({
   setProductStoreRef(store);
   setCartStoreRef(store);
   setChatStoreRef(store);
+  setClassStoreRef(store);
+  setMemberStoreRef(store);
+  setOrderStoreRef(store);
+  setWishlistStoreRef(store);
+  setChallengeStoreRef(store);
 
 export const persistor = persistStore(store);

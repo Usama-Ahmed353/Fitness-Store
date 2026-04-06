@@ -1,11 +1,19 @@
 import React, { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Trophy, Zap, Users, TrendingUp, LogIn, Target, Medal } from 'lucide-react';
+import { Trophy, Zap, Target, Medal, Flame, Sparkles, ArrowLeft } from 'lucide-react';
+import { useDispatch, useSelector } from 'react-redux';
+import { useNavigate } from 'react-router-dom';
 import { useTheme } from '@/context/ThemeContext';
 import { useLanguage } from '@/hooks/useLanguage';
 import ActiveChallenges from './challenges/ActiveChallenges';
 import ChallengeDetail from './challenges/ChallengeDetail';
 import CompletedChallenges from './challenges/CompletedChallenges';
+import {
+  fetchChallenges,
+  fetchMyChallenges,
+  joinChallenge,
+  leaveChallenge,
+} from '@/app/slices/challengeSlice';
 import {
   generateLeaderboard,
   calculateChallengeProgress,
@@ -15,18 +23,16 @@ import {
 } from '@/utils/challengeCalculator';
 
 export default function ChallengesPage() {
+  const navigate = useNavigate();
+  const dispatch = useDispatch();
+  const { user } = useSelector((s) => s.auth);
+  const { list, myChallenges, loading } = useSelector((s) => s.challenges);
   const { isDark } = useTheme();
   const { t } = useLanguage();
 
   const [activeTab, setActiveTab] = useState('active');
   const [selectedChallenge, setSelectedChallenge] = useState(null);
-  const [userChallenges, setUserChallenges] = useState([
-    { id: 1, joined: true, currentValue: 85 },
-    { id: 2, joined: false, currentValue: 0 },
-    { id: 3, joined: true, currentValue: 120 }
-  ]);
-
-  const [challenges, setChallenges] = useState([
+  const [fallbackChallenges] = useState([
     {
       id: 1,
       name: 'Bench Press Master',
@@ -85,7 +91,7 @@ export default function ChallengesPage() {
     }
   ]);
 
-  const [completedChallenges, setCompletedChallenges] = useState([
+  const [fallbackCompletedChallenges] = useState([
     {
       id: 101,
       name: 'Deadlift Confidence',
@@ -112,16 +118,96 @@ export default function ChallengesPage() {
   const textColor = isDark ? 'text-gray-100' : 'text-gray-900';
   const mutedColor = isDark ? 'text-gray-400' : 'text-gray-600';
 
-  const activeChallenges = challenges.filter(c => !completedChallenges.some(cc => cc.id === c.id));
+  React.useEffect(() => {
+    dispatch(fetchChallenges({ active: true }));
+    dispatch(fetchMyChallenges());
+  }, [dispatch]);
+
+  const mappedChallenges = useMemo(() => {
+    const source = list.length > 0 ? list : fallbackChallenges;
+    return source.map((c) => {
+      const currentUserEntry = (c.participants || []).find(
+        (p) => p.memberId?.userId?.toString?.() === user?.id || p.memberId?.toString?.() === user?.id
+      );
+
+      return {
+        id: c._id || c.id,
+        _id: c._id,
+        name: c.title || c.name,
+        description: c.description,
+        difficulty: c.difficulty || 'MEDIUM',
+        type: c.type,
+        targetValue: c.goal || c.targetValue || 100,
+        currentValue: currentUserEntry?.progress || c.currentValue || 0,
+        startDate: c.startDate,
+        endDate: c.endDate,
+        participants: (c.participants || c.participants || []).map((p, i) => ({
+          userId: p.memberId?.userId || p.memberId || i + 1,
+          username: p.memberId?.userId?.firstName || `Member ${i + 1}`,
+          currentValue: p.progress || 0,
+          targetValue: c.goal || 100,
+          rank: i + 1,
+        })),
+        rewards: c.reward ? Number(c.reward) || 50 : 50,
+        badge: c.badge || '🏆',
+        isCompleted: currentUserEntry?.isCompleted || false,
+      };
+    });
+  }, [list, fallbackChallenges, user?.id]);
+
+  const userChallenges = useMemo(
+    () =>
+      (myChallenges || []).map((c) => {
+        const me = (c.participants || []).find((p) => !p.isCompleted) || c.participants?.[0];
+        return {
+          id: c._id,
+          joined: true,
+          currentValue: me?.progress || 0,
+        };
+      }),
+    [myChallenges]
+  );
+
+  const completedChallenges = useMemo(() => {
+    const liveCompleted = (myChallenges || [])
+      .filter((c) => (c.participants || []).some((p) => p.isCompleted))
+      .map((c) => ({
+        id: c._id,
+        name: c.title,
+        difficulty: 'MEDIUM',
+        completedDate: c.updatedAt || c.endDate,
+        badge: '🏅',
+        pointsEarned: Number(c.reward) || 25,
+        timeToComplete: 0,
+      }));
+    return liveCompleted.length > 0 ? liveCompleted : fallbackCompletedChallenges;
+  }, [myChallenges, fallbackCompletedChallenges]);
+
+  const activeChallenges = mappedChallenges.filter(c => !completedChallenges.some(cc => cc.id === c.id));
   const userTotalPoints = completedChallenges.reduce((sum, c) => sum + c.pointsEarned, 0);
-  const userRank = Math.floor(Math.random() * 1000) + 1;
+  const userRank = useMemo(() => {
+    const scoreByUser = new Map();
+    mappedChallenges.forEach((challenge) => {
+      (challenge.participants || []).forEach((p) => {
+        const id = p.userId?.toString?.() || String(p.userId);
+        scoreByUser.set(id, (scoreByUser.get(id) || 0) + Number(p.currentValue || 0));
+      });
+    });
+
+    const myId = String(user?.id || '');
+    if (!myId || !scoreByUser.has(myId)) return '-';
+
+    const sorted = [...scoreByUser.entries()].sort((a, b) => b[1] - a[1]);
+    const idx = sorted.findIndex(([id]) => id === myId);
+    return idx >= 0 ? `#${idx + 1}` : '-';
+  }, [mappedChallenges, user?.id]);
 
   const handleJoinChallenge = (challengeId) => {
-    setUserChallenges(prev => [...prev, { id: challengeId, joined: true, currentValue: 0 }]);
+    dispatch(joinChallenge(challengeId)).then(() => dispatch(fetchMyChallenges()));
   };
 
   const handleLeaveChallenge = (challengeId) => {
-    setUserChallenges(prev => prev.filter(uc => uc.id !== challengeId));
+    dispatch(leaveChallenge(challengeId)).then(() => dispatch(fetchMyChallenges()));
   };
 
   const containerVariants = {
@@ -147,12 +233,36 @@ export default function ChallengesPage() {
         animate={{ opacity: 1, y: 0 }}
         className="mb-8"
       >
-        <div className="flex items-center justify-between mb-6">
-          <div className="flex items-center gap-3">
+        <div className={`relative overflow-hidden rounded-2xl border p-6 md:p-7 mb-6 ${isDark ? 'border-gray-700 bg-gradient-to-br from-gray-800 via-gray-900 to-slate-900' : 'border-orange-100 bg-gradient-to-br from-orange-50 via-white to-amber-50'}`}>
+          <div className="absolute -right-16 -top-16 h-40 w-40 rounded-full bg-yellow-400/20 blur-2xl" />
+          <div className="absolute -left-10 -bottom-16 h-40 w-40 rounded-full bg-blue-500/20 blur-2xl" />
+          <button
+            type="button"
+            onClick={() => navigate(-1)}
+            className={`relative z-10 mb-4 inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm font-medium transition ${
+              isDark
+                ? 'border-gray-600 bg-gray-800/70 text-gray-200 hover:bg-gray-700'
+                : 'border-gray-200 bg-white text-gray-700 hover:bg-gray-50'
+            }`}
+          >
+            <ArrowLeft className="h-4 w-4" /> Back
+          </button>
+          <div className="relative flex items-center gap-3">
             <Trophy className="w-8 h-8 text-yellow-500" />
-            <h1 className={`text-3xl font-bold ${textColor}`}>
-              {t('challenges.title', 'Fitness Challenges')}
-            </h1>
+            <div>
+              <h1 className={`text-3xl font-bold ${textColor}`}>
+                {t('challenges.title', 'Fitness Challenges')}
+              </h1>
+              <p className={`text-sm mt-1 ${mutedColor}`}>Compete with members, climb ranks, and unlock achievement badges.</p>
+              <div className="mt-2 flex flex-wrap items-center gap-2 text-xs font-semibold">
+                <span className={`inline-flex items-center gap-1 rounded-full px-3 py-1 ${isDark ? 'bg-gray-700 text-gray-200' : 'bg-white border border-gray-200 text-gray-700'}`}>
+                  <Flame size={12} className="text-orange-500" /> Weekly streak challenges
+                </span>
+                <span className={`inline-flex items-center gap-1 rounded-full px-3 py-1 ${isDark ? 'bg-gray-700 text-gray-200' : 'bg-white border border-gray-200 text-gray-700'}`}>
+                  <Sparkles size={12} className="text-blue-500" /> Real-time leaderboard
+                </span>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -165,7 +275,7 @@ export default function ChallengesPage() {
         >
           {[
             { icon: Trophy, label: 'Total Points', value: userTotalPoints, color: 'text-yellow-500' },
-            { icon: Target, label: 'Rank in Gym', value: `#${userRank}`, color: 'text-blue-500' },
+            { icon: Target, label: 'Rank in Gym', value: userRank, color: 'text-blue-500' },
             { icon: Medal, label: 'Challenges Won', value: completedChallenges.length, color: 'text-green-500' }
           ].map((stat, idx) => (
             <motion.div key={idx} variants={itemVariants} className={`${cardBg} p-4 rounded-lg border ${borderColor}`}>
@@ -240,6 +350,9 @@ export default function ChallengesPage() {
           <AnimatePresence mode="wait">
             {activeTab === 'active' && (
               <motion.div key="active" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+                {loading ? (
+                  <p className="text-sm text-gray-400">Loading challenges...</p>
+                ) : (
                 <ActiveChallenges
                   challenges={activeChallenges}
                   userChallenges={userChallenges}
@@ -247,6 +360,7 @@ export default function ChallengesPage() {
                   onJoinChallenge={handleJoinChallenge}
                   onLeaveChallenge={handleLeaveChallenge}
                 />
+                )}
               </motion.div>
             )}
 

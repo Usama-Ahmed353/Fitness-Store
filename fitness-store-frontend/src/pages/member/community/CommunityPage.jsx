@@ -1,15 +1,16 @@
 import React, { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Trophy, Users, MessageSquare, Zap, TrendingUp } from 'lucide-react';
+import { Trophy, Users, MessageSquare, TrendingUp, Search, Sparkles, ArrowLeft } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import Leaderboard from './Leaderboard';
 import Forum from './Forum';
 import Members from './Members';
 import { useTheme } from '../../../context/ThemeContext';
 import { useLanguage } from '../../../context/LanguageContext';
 import { getTotalKudos, getMemberLevel } from '../../../utils/socialCalculator';
-import { getUserStats } from '../../../utils/leaderboardCalculator';
 
 const CommunityPage = ({ userId, currentUser }) => {
+  const navigate = useNavigate();
   const { isDark } = useTheme();
   const { t } = useLanguage();
   const [activeTab, setActiveTab] = useState('leaderboard');
@@ -124,16 +125,38 @@ const CommunityPage = ({ userId, currentUser }) => {
   return (
     <div className={`min-h-screen transition-colors duration-300 ${isDark ? 'bg-gray-900' : 'bg-gray-50'}`}>
       {/* Header with user stats */}
-      <div className={`${isDark ? 'bg-gray-800/50' : 'bg-white'} border-b border-gray-700 sticky top-0 z-40`}>
+      <div className={`${isDark ? 'bg-gray-800/60 border-gray-700' : 'bg-white/90 border-gray-200'} backdrop-blur border-b sticky top-0 z-40`}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-          <div className="flex items-center justify-between mb-6">
+          <div className={`relative overflow-hidden rounded-2xl border p-6 mb-6 ${isDark ? 'border-gray-700 bg-gradient-to-br from-gray-800 via-gray-900 to-slate-900' : 'border-orange-100 bg-gradient-to-br from-orange-50 via-white to-amber-50'}`}>
+            <div className="absolute -right-14 -top-12 h-40 w-40 rounded-full bg-orange-500/20 blur-2xl" />
+            <div className="absolute -left-12 -bottom-16 h-40 w-40 rounded-full bg-blue-500/20 blur-2xl" />
             <div>
+              <button
+                type="button"
+                onClick={() => navigate(-1)}
+                className={`mb-4 inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm font-medium transition ${
+                  isDark
+                    ? 'border-gray-600 bg-gray-800/70 text-gray-200 hover:bg-gray-700'
+                    : 'border-gray-200 bg-white text-gray-700 hover:bg-gray-50'
+                }`}
+              >
+                <ArrowLeft className="h-4 w-4" /> Back
+              </button>
               <h1 className={`text-3xl font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>
                 {t('community.title') || 'Community Hub'}
               </h1>
               <p className={`mt-1 ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
                 {t('community.subtitle') || 'Connect, compete, and grow with your gym community'}
               </p>
+
+              <div className="mt-3 flex flex-wrap items-center gap-2 text-xs font-semibold">
+                <span className={`inline-flex items-center gap-1 rounded-full px-3 py-1 ${isDark ? 'bg-gray-700 text-gray-200' : 'bg-white border border-gray-200 text-gray-700'}`}>
+                  <Sparkles size={12} className="text-orange-500" /> Weekly streak unlocked
+                </span>
+                <span className={`inline-flex items-center gap-1 rounded-full px-3 py-1 ${isDark ? 'bg-gray-700 text-gray-200' : 'bg-white border border-gray-200 text-gray-700'}`}>
+                  <Users size={12} className="text-blue-500" /> {mockMembers.length} active members
+                </span>
+              </div>
             </div>
           </div>
 
@@ -143,7 +166,7 @@ const CommunityPage = ({ userId, currentUser }) => {
               <motion.div
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
-                className={`p-3 rounded-lg ${isDark ? 'bg-gray-700/50' : 'bg-gray-100'}`}
+                className={`p-3 rounded-xl border ${isDark ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200 shadow-sm'}`}
               >
                 <div className={`text-xs ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
                   {t('common.rank') || 'Rank'}
@@ -155,7 +178,7 @@ const CommunityPage = ({ userId, currentUser }) => {
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.05 }}
-                className={`p-3 rounded-lg ${isDark ? 'bg-gray-700/50' : 'bg-gray-100'}`}
+                className={`p-3 rounded-xl border ${isDark ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200 shadow-sm'}`}
               >
                 <div className={`text-xs ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>Points</div>
                 <div className="text-xl font-bold text-orange-400 mt-1">{userStats.points}</div>
@@ -165,7 +188,7 @@ const CommunityPage = ({ userId, currentUser }) => {
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.1 }}
-                className={`p-3 rounded-lg ${isDark ? 'bg-gray-700/50' : 'bg-gray-100'}`}
+                className={`p-3 rounded-xl border ${isDark ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200 shadow-sm'}`}
               >
                 <div className={`text-xs ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>Kudos</div>
                 <div className="text-xl font-bold text-pink-400 mt-1">{userStats.kudos}</div>
@@ -175,7 +198,7 @@ const CommunityPage = ({ userId, currentUser }) => {
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.15 }}
-                className={`p-3 rounded-lg ${isDark ? 'bg-gray-700/50' : 'bg-gray-100'}`}
+                className={`p-3 rounded-xl border ${isDark ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200 shadow-sm'}`}
               >
                 <div className={`text-xs ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>Level</div>
                 <div className="text-lg font-bold text-purple-400 mt-1">{userStats.level}</div>
@@ -185,7 +208,7 @@ const CommunityPage = ({ userId, currentUser }) => {
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.2 }}
-                className={`p-3 rounded-lg ${isDark ? 'bg-gray-700/50' : 'bg-gray-100'}`}
+                className={`p-3 rounded-xl border ${isDark ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200 shadow-sm'}`}
               >
                 <div className={`text-xs ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>Trend</div>
                 <div className="text-lg font-bold text-green-400 mt-1 flex items-center gap-1">
@@ -197,12 +220,13 @@ const CommunityPage = ({ userId, currentUser }) => {
 
           {/* Search bar */}
           <div className="relative">
+            <Search size={16} className={`absolute left-3 top-3.5 ${isDark ? 'text-gray-500' : 'text-gray-400'}`} />
             <input
               type="text"
               placeholder={t('common.search') || 'Search...'}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className={`w-full px-4 py-2 rounded-lg border transition-colors ${
+              className={`w-full px-4 py-2 pl-9 rounded-lg border transition-colors ${
                 isDark
                   ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-400 focus:border-orange-400'
                   : 'bg-white border-gray-300 text-gray-900 placeholder-gray-500 focus:border-orange-400'
@@ -213,9 +237,9 @@ const CommunityPage = ({ userId, currentUser }) => {
       </div>
 
       {/* Tab Navigation */}
-      <div className={`${isDark ? 'bg-gray-800' : 'bg-white'} border-b border-gray-700 sticky top-20 z-30`}>
+      <div className={`${isDark ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'} border-b sticky top-20 z-30`}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex gap-1 overflow-x-auto">
+          <div className="flex gap-2 overflow-x-auto py-2">
             {tabs.map((tab) => {
               const IconComponent = tab.icon;
               const isActive = activeTab === tab.id;
@@ -223,10 +247,10 @@ const CommunityPage = ({ userId, currentUser }) => {
                 <motion.button
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id)}
-                  className={`flex items-center gap-2 px-6 py-4 font-medium transition-colors whitespace-nowrap border-b-2 ${
+                  className={`flex items-center gap-2 px-5 py-2.5 rounded-lg font-medium transition-colors whitespace-nowrap ${
                     isActive
-                      ? `border-orange-400 text-orange-400`
-                      : `border-transparent ${isDark ? 'text-gray-400 hover:text-gray-300' : 'text-gray-600 hover:text-gray-900'}`
+                      ? 'bg-orange-500 text-white'
+                      : `${isDark ? 'text-gray-400 hover:bg-gray-700 hover:text-gray-300' : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'}`
                   }`}
                   whileHover={{ y: -2 }}
                   whileTap={{ y: 0 }}

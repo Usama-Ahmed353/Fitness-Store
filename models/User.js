@@ -42,6 +42,30 @@ const userSchema = new mongoose.Schema(
     profilePhoto: {
       type: String,
     },
+    notificationSettings: {
+      email: {
+        classReminders: { type: Boolean, default: true },
+        promotions: { type: Boolean, default: false },
+        newsletter: { type: Boolean, default: true },
+      },
+      push: {
+        classReminders: { type: Boolean, default: true },
+        announcements: { type: Boolean, default: true },
+      },
+    },
+    preferences: {
+      language: { type: String, default: 'en' },
+      theme: { type: String, enum: ['light', 'dark', 'system'], default: 'system' },
+      timezone: { type: String, default: 'UTC' },
+    },
+    privacy: {
+      profileVisibility: {
+        type: String,
+        enum: ['public', 'members', 'private'],
+        default: 'members',
+      },
+      allowMessages: { type: Boolean, default: true },
+    },
     isEmailVerified: {
       type: Boolean,
       default: false,

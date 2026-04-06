@@ -1,4 +1,6 @@
 import React, { useState } from 'react';
+import { useDispatch } from 'react-redux';
+import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Menu,
@@ -20,8 +22,11 @@ import {
 } from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
 import { useLanguage } from '../context/LanguageContext';
+import { logoutAsync } from '../app/slices/authSlice';
 
 const AdminLayout = ({ children }) => {
+  const dispatch = useDispatch();
+  const navigate = useNavigate();
   const { isDark } = useTheme();
   const { t } = useLanguage();
 
@@ -51,6 +56,15 @@ const AdminLayout = ({ children }) => {
     name: 'Admin User',
     email: 'admin@crunchfit.com',
     avatar: '👨‍💼'
+  };
+
+  const handleLogout = async () => {
+    try {
+      await dispatch(logoutAsync());
+    } finally {
+      setShowProfileMenu(false);
+      navigate('/login', { replace: true });
+    }
   };
 
   return (
@@ -127,6 +141,7 @@ const AdminLayout = ({ children }) => {
           layout
         >
           <motion.button
+            onClick={handleLogout}
             className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-red-500 transition-colors ${
               isDark ? 'hover:bg-red-500/10' : 'hover:bg-red-50'
             }`}
@@ -297,6 +312,7 @@ const AdminLayout = ({ children }) => {
                         {t('admin.settings') || 'Settings'}
                       </motion.a>
                       <button
+                        onClick={handleLogout}
                         className={`w-full text-left px-4 py-2 rounded-lg text-sm text-red-500 transition-colors ${
                           isDark ? 'hover:bg-red-500/10' : 'hover:bg-red-50'
                         }`}

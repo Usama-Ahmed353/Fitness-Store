@@ -28,7 +28,8 @@ import AdminLayout from '../../layouts/AdminLayout';
 import axios from 'axios';
 import { useSelector } from 'react-redux';
 
-const API = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api';
+const runtimeHost = typeof window !== 'undefined' ? window.location.hostname : 'localhost';
+const API = import.meta.env.VITE_API_BASE_URL || `http://${runtimeHost}:5001/api`;
 
 const MembersPage = () => {
   const { isDark } = useTheme();

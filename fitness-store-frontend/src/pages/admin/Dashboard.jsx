@@ -9,13 +9,16 @@ import {
 import axios from 'axios';
 import { useSelector } from 'react-redux';
 
-const API = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api';
+const runtimeHost = typeof window !== 'undefined' ? window.location.hostname : 'localhost';
+const API = import.meta.env.VITE_API_BASE_URL || `http://${runtimeHost}:5001/api`;
 
 const AdminDashboard = () => {
   const navigate = useNavigate();
   const { accessToken } = useSelector((s) => s.auth);
   const [dashData, setDashData] = useState(null);
   const [orderData, setOrderData] = useState(null);
+  const [recentUsers, setRecentUsers] = useState([]);
+  const [totalProducts, setTotalProducts] = useState(0);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -23,9 +26,13 @@ const AdminDashboard = () => {
     Promise.all([
       axios.get(`${API}/admin/analytics`, { headers }).catch(() => ({ data: { data: null } })),
       axios.get(`${API}/orders/admin/analytics`, { headers }).catch(() => ({ data: { data: null } })),
-    ]).then(([adminRes, orderRes]) => {
+      axios.get(`${API}/products/admin/all`, { headers, params: { page: 1, limit: 1 } }).catch(() => ({ data: {} })),
+      axios.get(`${API}/admin/users`, { headers, params: { page: 1, limit: 5 } }).catch(() => ({ data: {} })),
+    ]).then(([adminRes, orderRes, productsRes, usersRes]) => {
       setDashData(adminRes.data?.data || null);
       setOrderData(orderRes.data?.data || null);
+      setTotalProducts(productsRes.data?.pagination?.total || 0);
+      setRecentUsers(usersRes.data?.data || []);
       setLoading(false);
     });
   }, [accessToken]);
@@ -37,7 +44,7 @@ const AdminDashboard = () => {
     { label: 'Total Users', value: metrics.totalUsers || 0, icon: Users, color: 'from-blue-500 to-blue-700', link: '/admin/members' },
     { label: 'Total Orders', value: orderData?.totalOrders || 0, icon: ShoppingCart, color: 'from-purple-500 to-purple-700', link: '/admin/orders' },
     { label: 'Revenue', value: `$${(orderData?.totalRevenue || 0).toLocaleString()}`, icon: DollarSign, color: 'from-green-500 to-green-700', link: '/admin/orders' },
-    { label: 'Products', value: '—', icon: Package, color: 'from-orange-500 to-orange-700', link: '/admin/products' },
+    { label: 'Products', value: totalProducts, icon: Package, color: 'from-orange-500 to-orange-700', link: '/admin/products' },
   ];
 
   const orderStatusCards = [
@@ -149,6 +156,52 @@ const AdminDashboard = () => {
                             </td>
                             <td className="px-6 py-3 text-right text-sm text-gray-400">
                               {new Date(order.createdAt).toLocaleDateString()}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+
+              {/* Recent User Records */}
+              {recentUsers.length > 0 && (
+                <div className="mb-8">
+                  <div className="flex items-center justify-between mb-4">
+                    <h2 className="text-xl font-bold">Recent User Records</h2>
+                    <button onClick={() => navigate('/admin/members')} className="text-accent text-sm flex items-center gap-1 hover:underline">
+                      View All <ArrowRight className="w-4 h-4" />
+                    </button>
+                  </div>
+                  <div className="bg-white/5 rounded-xl overflow-hidden">
+                    <table className="w-full">
+                      <thead>
+                        <tr className="border-b border-white/10">
+                          <th className="text-left px-6 py-3 text-sm text-gray-400">Name</th>
+                          <th className="text-left px-6 py-3 text-sm text-gray-400">Email</th>
+                          <th className="text-left px-6 py-3 text-sm text-gray-400">Role</th>
+                          <th className="text-left px-6 py-3 text-sm text-gray-400">Status</th>
+                          <th className="text-right px-6 py-3 text-sm text-gray-400">Joined</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {recentUsers.map((user) => (
+                          <tr key={user._id} className="border-b border-white/5 hover:bg-white/5">
+                            <td className="px-6 py-3 text-sm font-medium">
+                              {user.firstName} {user.lastName}
+                            </td>
+                            <td className="px-6 py-3 text-sm text-gray-300">{user.email}</td>
+                            <td className="px-6 py-3 text-sm capitalize">{user.role?.replace('_', ' ')}</td>
+                            <td className="px-6 py-3">
+                              <span className={`text-xs px-2 py-1 rounded ${
+                                user.isActive ? 'bg-green-400/20 text-green-400' : 'bg-red-400/20 text-red-400'
+                              }`}>
+                                {user.isActive ? 'active' : 'inactive'}
+                              </span>
+                            </td>
+                            <td className="px-6 py-3 text-right text-sm text-gray-400">
+                              {new Date(user.createdAt).toLocaleDateString()}
                             </td>
                           </tr>
                         ))}

@@ -13,14 +13,15 @@ import {
 import toast from 'react-hot-toast';
 
 const CATEGORIES = [
-  'supplements', 'equipment', 'clothing', 'accessories', 'footwear',
+  'supplements', 'equipment', 'apparel', 'accessories',
   'nutrition', 'recovery', 'cardio', 'strength', 'yoga', 'other'
 ];
 
 const initialForm = {
   title: '', description: '', price: '', discount: '', category: 'supplements',
   brand: '', stock: '', sku: '', weight: '', tags: '', isFeatured: false,
-  metaTitle: '', metaDescription: '', metaKeywords: ''
+  metaTitle: '', metaDescription: '', metaKeywords: '',
+  canonicalUrl: '', ogTitle: '', ogDescription: '', ogImage: ''
 };
 
 const ProductsPage = () => {
@@ -67,7 +68,11 @@ const ProductsPage = () => {
       isFeatured: product.isFeatured || false,
       metaTitle: product.seo?.metaTitle || product.metaTitle || '',
       metaDescription: product.seo?.metaDescription || product.metaDescription || '',
-      metaKeywords: product.seo?.metaKeywords?.join(', ') || ''
+      metaKeywords: product.seo?.metaKeywords?.join(', ') || '',
+      canonicalUrl: product.seo?.canonicalUrl || '',
+      ogTitle: product.seo?.ogTitle || '',
+      ogDescription: product.seo?.ogDescription || '',
+      ogImage: product.seo?.ogImage || ''
     });
     setShowModal(true);
   };
@@ -84,12 +89,20 @@ const ProductsPage = () => {
       seo: {
         metaTitle: form.metaTitle,
         metaDescription: form.metaDescription,
-        metaKeywords: form.metaKeywords ? form.metaKeywords.split(',').map(k => k.trim()).filter(Boolean) : []
+        metaKeywords: form.metaKeywords ? form.metaKeywords.split(',').map(k => k.trim()).filter(Boolean) : [],
+        canonicalUrl: form.canonicalUrl || undefined,
+        ogTitle: form.ogTitle || undefined,
+        ogDescription: form.ogDescription || undefined,
+        ogImage: form.ogImage || undefined,
       }
     };
     delete data.metaTitle;
     delete data.metaDescription;
     delete data.metaKeywords;
+    delete data.canonicalUrl;
+    delete data.ogTitle;
+    delete data.ogDescription;
+    delete data.ogImage;
 
     let result;
     if (editingProduct) {
@@ -335,6 +348,22 @@ const ProductsPage = () => {
                       <div>
                         <label className="block text-sm text-gray-400 mb-1">Meta Keywords (comma separated)</label>
                         <input value={form.metaKeywords} onChange={e => setForm({ ...form, metaKeywords: e.target.value })} className="w-full px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-white focus:outline-none focus:border-accent" />
+                      </div>
+                      <div>
+                        <label className="block text-sm text-gray-400 mb-1">Canonical URL</label>
+                        <input value={form.canonicalUrl} onChange={e => setForm({ ...form, canonicalUrl: e.target.value })} placeholder="https://example.com/product/slug" className="w-full px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-accent" />
+                      </div>
+                      <div>
+                        <label className="block text-sm text-gray-400 mb-1">OG Title</label>
+                        <input value={form.ogTitle} onChange={e => setForm({ ...form, ogTitle: e.target.value })} className="w-full px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-white focus:outline-none focus:border-accent" />
+                      </div>
+                      <div>
+                        <label className="block text-sm text-gray-400 mb-1">OG Description</label>
+                        <textarea rows={2} value={form.ogDescription} onChange={e => setForm({ ...form, ogDescription: e.target.value })} className="w-full px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-white focus:outline-none focus:border-accent resize-none" />
+                      </div>
+                      <div>
+                        <label className="block text-sm text-gray-400 mb-1">OG Image URL</label>
+                        <input value={form.ogImage} onChange={e => setForm({ ...form, ogImage: e.target.value })} placeholder="https://.../image.jpg" className="w-full px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-accent" />
                       </div>
                     </div>
                   </div>

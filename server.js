@@ -30,6 +30,9 @@ const orderRoutes = require('./routes/order.routes');
 const wishlistRoutes = require('./routes/wishlist.routes');
 const chatRoutes = require('./routes/chat.routes');
 const aiRoutes = require('./routes/ai.routes');
+const challengeRoutes = require('./routes/challenge.routes');
+const nutritionRoutes = require('./routes/nutrition.routes');
+const communityRoutes = require('./routes/community.routes');
 
 // Import Socket.io handlers
 const socketHandlers = require('./socket/handlers');
@@ -53,9 +56,38 @@ const allowedOrigins = [
 
 const normalizedAllowedOrigins = [...new Set(allowedOrigins.filter(Boolean))];
 
+const isAllowedOrigin = (origin) => {
+  // Allow non-browser tools (curl/Postman/server-to-server) with no Origin header.
+  if (!origin) return true;
+
+  if (normalizedAllowedOrigins.includes(origin)) {
+    return true;
+  }
+
+  // Allow local Vite/dev frontends on any localhost/127.0.0.1 port.
+  return /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/i.test(origin);
+};
+
+const corsOptions = {
+  origin(origin, callback) {
+    if (isAllowedOrigin(origin)) {
+      callback(null, true);
+      return;
+    }
+    callback(new Error('Not allowed by CORS'));
+  },
+  credentials: true,
+};
+
 const io = socketIO(server, {
   cors: {
-    origin: normalizedAllowedOrigins,
+    origin(origin, callback) {
+      if (isAllowedOrigin(origin)) {
+        callback(null, true);
+        return;
+      }
+      callback(new Error('Not allowed by CORS'));
+    },
     credentials: true,
   },
 });
@@ -67,12 +99,7 @@ connectDB();
 app.set('trust proxy', 1);
 
 // CORS Configuration
-app.use(
-  cors({
-    origin: normalizedAllowedOrigins,
-    credentials: true,
-  })
-);
+app.use(cors(corsOptions));
 
 // Helmet (security headers)
 app.use(helmet());
@@ -130,6 +157,9 @@ app.get('/', (req, res) => {
       wishlist: '/api/wishlist',
       chat: '/api/chat',
       ai: '/api/ai',
+      challenges: '/api/challenges',
+      nutrition: '/api/nutrition',
+      community: '/api/community',
       webhooks: '/api/webhooks',
       health: '/api/health'
     },
@@ -155,6 +185,9 @@ app.use('/api/orders', orderRoutes);
 app.use('/api/wishlist', wishlistRoutes);
 app.use('/api/chat', chatRoutes);
 app.use('/api/ai', aiRoutes);
+app.use('/api/challenges', challengeRoutes);
+app.use('/api/nutrition', nutritionRoutes);
+app.use('/api/community', communityRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {

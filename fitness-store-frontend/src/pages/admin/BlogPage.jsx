@@ -19,8 +19,8 @@ import {
   Clock,
   Check,
 } from 'lucide-react';
-import { ThemeContext } from '../../contexts/ThemeContext';
-import { LanguageContext } from '../../contexts/LanguageContext';
+import { ThemeContext } from '../../context/ThemeContext';
+import { LanguageContext } from '../../context/LanguageContext';
 import AdminLayout from '../../layouts/AdminLayout';
 
 // Mock blog posts
@@ -100,6 +100,70 @@ const BLOG_CATEGORIES = [
   { id: 'wellness', label: 'Wellness' },
   { id: 'community', label: 'Community' },
 ];
+
+const escapeXml = (value = '') => String(value)
+  .replace(/&/g, '&amp;')
+  .replace(/</g, '&lt;')
+  .replace(/>/g, '&gt;')
+  .replace(/"/g, '&quot;')
+  .replace(/'/g, '&#39;');
+
+const wrapTitleLines = (title = '', maxChars = 22, maxLines = 4) => {
+  const words = String(title).trim().split(/\s+/);
+  if (!words.length) return ['CrunchFit Article'];
+
+  const lines = [];
+  let currentLine = '';
+
+  words.forEach((word) => {
+    const candidate = currentLine ? `${currentLine} ${word}` : word;
+    if (candidate.length <= maxChars) {
+      currentLine = candidate;
+      return;
+    }
+
+    if (currentLine) lines.push(currentLine);
+    currentLine = word;
+  });
+
+  if (currentLine) lines.push(currentLine);
+
+  if (lines.length > maxLines) {
+    const trimmed = lines.slice(0, maxLines);
+    const last = trimmed[maxLines - 1];
+    trimmed[maxLines - 1] = last.length > maxChars - 1 ? `${last.slice(0, maxChars - 1)}...` : `${last}...`;
+    return trimmed;
+  }
+
+  return lines;
+};
+
+const buildFallbackCover = (title = 'CrunchFit Article', category = 'Fitness') => {
+  const safeCategory = escapeXml(category);
+  const titleLines = wrapTitleLines(title)
+    .map((line, index) => `<tspan x="90" dy="${index === 0 ? 0 : 56}">${escapeXml(line)}</tspan>`)
+    .join('');
+
+  const svg = `
+    <svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
+      <defs>
+        <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0%" stop-color="#0f172a"/>
+          <stop offset="100%" stop-color="#0b3b54"/>
+        </linearGradient>
+      </defs>
+      <rect width="1200" height="630" fill="url(#bg)"/>
+      <rect x="50" y="50" width="1100" height="530" rx="24" fill="none" stroke="#1ecad3" stroke-opacity="0.35" stroke-width="2"/>
+      <text x="90" y="140" fill="#1ecad3" font-family="Segoe UI, Arial, sans-serif" font-size="34" font-weight="700">${safeCategory}</text>
+      <text x="90" y="220" fill="#f8fafc" font-family="Segoe UI, Arial, sans-serif" font-size="46" font-weight="800">${titleLines}</text>
+      <text x="90" y="560" fill="#94a3b8" font-family="Segoe UI, Arial, sans-serif" font-size="26">CrunchFit Pro Blog</text>
+    </svg>
+  `;
+
+  return `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}`;
+};
+
+const getPostCoverImage = (post) => post.coverImage || buildFallbackCover(post.title, post.categoryLabel);
 
 const BlogPage = () => {
   const { theme } = useContext(ThemeContext);
@@ -399,11 +463,15 @@ const BlogPage = () => {
                 >
                   <div className="flex gap-4 p-4">
                     {/* Cover Image */}
-                    <div className="flex-shrink-0 w-32 h-32 rounded-lg overflow-hidden bg-gray-300 dark:bg-gray-700">
+                    <div className="flex-shrink-0 w-40 h-24 sm:w-44 sm:h-28 rounded-lg overflow-hidden bg-slate-200 dark:bg-slate-700/70 border border-slate-300/50 dark:border-slate-600/60">
                       <img
-                        src={post.coverImage}
+                        src={getPostCoverImage(post)}
                         alt={post.title}
-                        className="w-full h-full object-cover"
+                        className="w-full h-full object-contain"
+                        onError={(e) => {
+                          e.currentTarget.onerror = null;
+                          e.currentTarget.src = buildFallbackCover(post.title, post.categoryLabel);
+                        }}
                       />
                     </div>
 
@@ -428,8 +496,8 @@ const BlogPage = () => {
                               </span>
                             )}
                           </div>
-                          <h3 className="text-lg font-bold mb-2 line-clamp-2">{post.title}</h3>
-                          <p className={`text-sm mb-3 line-clamp-2 ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
+                          <h3 className="text-lg font-bold mb-2 leading-snug break-words">{post.title}</h3>
+                          <p className={`text-sm mb-3 line-clamp-3 leading-relaxed ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
                             {post.excerpt}
                           </p>
 
@@ -791,9 +859,13 @@ const BlogPage = () => {
 
               <article className="space-y-6">
                 <img
-                  src={previewPost.coverImage}
+                  src={getPostCoverImage(previewPost)}
                   alt={previewPost.title}
-                  className="w-full h-80 object-cover rounded-lg"
+                  className="w-full max-h-[420px] object-contain rounded-lg bg-slate-100 dark:bg-slate-900/60"
+                  onError={(e) => {
+                    e.currentTarget.onerror = null;
+                    e.currentTarget.src = buildFallbackCover(previewPost.title, previewPost.categoryLabel);
+                  }}
                 />
 
                 <div>

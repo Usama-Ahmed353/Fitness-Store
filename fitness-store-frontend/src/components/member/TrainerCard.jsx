@@ -6,7 +6,7 @@ import { Button } from '../../components/ui/Button';
 import { Card } from '../../components/ui/Card';
 import TrainerProfileModal from './TrainerProfileModal';
 import SessionBookingModal from './SessionBookingModal';
-import { Star, Calendar, DollarSign, Tag } from 'lucide-react';
+import { Star, Calendar, DollarSign, User } from 'lucide-react';
 
 /**
  * TrainerCard - Individual trainer card in grid
@@ -16,18 +16,36 @@ const TrainerCard = ({ trainer }) => {
   const { t } = useLanguage();
   const [showProfile, setShowProfile] = useState(false);
   const [showBooking, setShowBooking] = useState(false);
+  const [imageFailed, setImageFailed] = useState(false);
+
+  const trainerInitials = (trainer.name || 'Trainer')
+    .split(' ')
+    .map((n) => n[0])
+    .join('')
+    .slice(0, 2)
+    .toUpperCase();
 
   return (
     <>
       <motion.div whileHover={{ y: -4 }} transition={{ duration: 0.2 }}>
-        <Card className="overflow-hidden hover:shadow-xl transition-shadow h-full flex flex-col">
+        <Card variant={isDark ? 'dark' : 'default'} className="overflow-hidden hover:shadow-xl transition-shadow h-full flex flex-col">
           {/* Photo */}
           <div className="relative h-40 overflow-hidden bg-gray-300">
-            <img
-              src={trainer.photo}
-              alt={trainer.name}
-              className="w-full h-full object-cover"
-            />
+            {!imageFailed && trainer.photo ? (
+              <img
+                src={trainer.photo}
+                alt={trainer.name}
+                onError={() => setImageFailed(true)}
+                className="w-full h-full object-cover"
+              />
+            ) : (
+              <div className="w-full h-full bg-gradient-to-br from-accent to-secondary flex flex-col items-center justify-center text-white">
+                <User className="w-8 h-8 mb-2" />
+                <span className="text-sm font-bold tracking-[0.12em]">
+                  {trainerInitials}
+                </span>
+              </div>
+            )}
           </div>
 
           {/* Content */}

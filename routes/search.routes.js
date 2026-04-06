@@ -5,7 +5,17 @@ const { search, advancedSearch } = require('../controllers/search.controller');
 const router = express.Router();
 
 // Basic search
-router.get('/', query('q').notEmpty().withMessage('Search query is required'), search);
+router.get(
+  '/',
+  query().custom((_, { req }) => {
+    const value = (req.query.q || req.query.query || '').toString().trim();
+    if (!value) {
+      throw new Error('Search query is required');
+    }
+    return true;
+  }),
+  search
+);
 
 // Advanced search with filters
 router.get(

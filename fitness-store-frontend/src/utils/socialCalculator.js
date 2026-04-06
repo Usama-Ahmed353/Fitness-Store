@@ -274,6 +274,9 @@ export const calculateMemberLevel = (member, allKudos, allPosts) => {
   return { level: 'Beginner', exp, nextLevelExp: 25, expToNext: Math.max(0, 25 - exp) };
 };
 
+export const getMemberLevel = (member, allKudos = [], allPosts = []) =>
+  calculateMemberLevel(member, allKudos, allPosts);
+
 /**
  * Get community highlights (featured members)
  */

@@ -16,6 +16,7 @@ import MembershipCard from '../../components/member/MembershipCard';
 import ActivityFeed from '../../components/member/ActivityFeed';
 import Achievements from '../../components/member/Achievements';
 import { Zap, Heart, TrendingUp } from 'lucide-react';
+import { fetchMemberProfile, fetchMemberBookings } from '../../app/slices/memberSlice';
 
 /**
  * DashboardPage - Member dashboard with overview, stats, and quick actions
@@ -87,13 +88,14 @@ const DashboardPage = () => {
     },
   ];
 
-  // TODO: Fetch member data on mount
   useEffect(() => {
     if (!memberProfile) {
-      // Dispatch fetchMemberProfile if not already loaded
-      console.log('Member profile not loaded');
+      dispatch(fetchMemberProfile());
     }
-  }, [memberProfile, dispatch]);
+    if (!bookings || bookings.length === 0) {
+      dispatch(fetchMemberBookings());
+    }
+  }, [memberProfile, bookings, dispatch]);
 
   const nextClass = getNextClass();
 

@@ -5,6 +5,7 @@ import * as z from 'zod';
 import { motion } from 'framer-motion';
 import { Mail, ArrowRight, Clock } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import axios from 'axios';
 import Button from '../../components/ui/Button';
 import Input from '../../components/ui/Input';
 import Card from '../../components/ui/Card';
@@ -18,6 +19,11 @@ const ForgotPasswordPage = () => {
   const [submitted, setSubmitted] = useState(false);
   const [countdown, setCountdown] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
+  const [submittedEmail, setSubmittedEmail] = useState('');
+  const runtimeHost =
+    typeof window !== 'undefined' ? window.location.hostname : 'localhost';
+  const API_BASE_URL =
+    import.meta.env.VITE_API_BASE_URL || `http://${runtimeHost}:5001/api`;
 
   const { register, handleSubmit, formState: { errors } } = useForm({
     resolver: zodResolver(schema),
@@ -26,9 +32,11 @@ const ForgotPasswordPage = () => {
   const onSubmit = async (data) => {
     setIsLoading(true);
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      
+      await axios.post(`${API_BASE_URL}/auth/forgot-password`, {
+        email: data.email,
+      });
+
+      setSubmittedEmail(data.email);
       setSubmitted(true);
       setCountdown(60);
       toast.success('Reset instructions sent to your email');
@@ -44,14 +52,15 @@ const ForgotPasswordPage = () => {
         });
       }, 1000);
     } catch (error) {
-      toast.error('Failed to send reset instructions');
+      toast.error(error.response?.data?.message || 'Failed to send reset instructions');
     } finally {
       setIsLoading(false);
     }
   };
 
   const handleResend = () => {
-    setCountdown(60);
+    if (!submittedEmail || countdown > 0) return;
+    onSubmit({ email: submittedEmail });
   };
 
   return (
@@ -83,7 +92,7 @@ const ForgotPasswordPage = () => {
               {/* Header */}
               <div className="text-center mb-8">
                 <h1 className="text-3xl font-bold text-accent mb-2">Crunch</h1>
-                <p className="text-light-bg/70">Reset Your Password</p>
+                <p className="text-slate-600">Reset Your Password</p>
               </div>
 
               {!submitted ? (
@@ -91,12 +100,12 @@ const ForgotPasswordPage = () => {
                   onSubmit={handleSubmit(onSubmit)}
                   className="space-y-6"
                 >
-                  <p className="text-light-bg/70 text-sm text-center">
+                  <p className="text-slate-600 text-sm text-center">
                     Enter your email address and we'll send you a link to reset your password.
                   </p>
 
                   <div>
-                    <label className="block text-sm font-medium text-white mb-2">
+                    <label className="block text-sm font-medium text-slate-700 mb-2">
                       Email Address
                     </label>
                     <Input
@@ -130,7 +139,7 @@ const ForgotPasswordPage = () => {
                     )}
                   </Button>
 
-                  <p className="text-center text-light-bg/70 text-sm">
+                  <p className="text-center text-slate-600 text-sm">
                     Remembered your password?{' '}
                     <Link to="/login" className="text-accent hover:underline font-semibold">
                       Sign in
@@ -149,15 +158,15 @@ const ForgotPasswordPage = () => {
                     </div>
                   </div>
 
-                  <h2 className="text-xl font-bold text-white mb-2">
+                  <h2 className="text-xl font-bold text-slate-900 mb-2">
                     Check Your Email
                   </h2>
-                  <p className="text-light-bg/70 text-sm mb-6">
+                  <p className="text-slate-600 text-sm mb-6">
                     We sent password reset instructions to your email address. Click the link in the email to reset your password.
                   </p>
 
                   <div className="bg-accent/10 border border-accent/30 rounded-lg p-4 mb-6">
-                    <p className="text-sm text-light-bg/80">
+                    <p className="text-sm text-slate-700">
                       <strong>Didn't receive the email?</strong> Check your spam folder or try resending.
                     </p>
                   </div>

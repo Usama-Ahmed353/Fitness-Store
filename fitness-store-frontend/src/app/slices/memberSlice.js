@@ -1,15 +1,30 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import axios from 'axios';
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api';
+const runtimeHost = typeof window !== 'undefined' ? window.location.hostname : 'localhost';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || `http://${runtimeHost}:5001/api`;
+const api = axios.create({ baseURL: API_BASE_URL });
+
+let storeRef = null;
+export const setMemberStoreRef = (s) => {
+  storeRef = s;
+};
+
+api.interceptors.request.use((config) => {
+  if (storeRef) {
+    const token = storeRef.getState()?.auth?.accessToken;
+    if (token) config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
+});
 
 // Async Thunks
 export const fetchMemberProfile = createAsyncThunk(
   'member/fetchMemberProfile',
-  async (memberId, { rejectWithValue }) => {
+  async (_, { rejectWithValue }) => {
     try {
-      const response = await axios.get(`${API_BASE_URL}/members/${memberId}`);
-      return response.data.member;
+      const response = await api.get('/members/me');
+      return response.data?.data || null;
     } catch (error) {
       return rejectWithValue(error.response?.data?.message || 'Failed to fetch profile');
     }
@@ -18,25 +33,15 @@ export const fetchMemberProfile = createAsyncThunk(
 
 export const updateMemberProfile = createAsyncThunk(
   'member/updateMemberProfile',
-  async ({ memberId, data }, { rejectWithValue }) => {
-    try {
-      const response = await axios.put(`${API_BASE_URL}/members/${memberId}`, data);
-      return response.data.member;
-    } catch (error) {
-      return rejectWithValue(error.response?.data?.message || 'Failed to update profile');
-    }
-  }
+  async (_, { rejectWithValue }) => rejectWithValue('Profile update endpoint is not available yet')
 );
 
 export const purchaseMembership = createAsyncThunk(
   'member/purchaseMembership',
-  async ({ memberId, planId, paymentData }, { rejectWithValue }) => {
+  async ({ gymId, plan, paymentMethodId }, { rejectWithValue }) => {
     try {
-      const response = await axios.post(
-        `${API_BASE_URL}/members/${memberId}/memberships`,
-        { planId, paymentData }
-      );
-      return response.data.membership;
+      const response = await api.post('/members/join', { gymId, plan, paymentMethodId });
+      return response.data?.data;
     } catch (error) {
       return rejectWithValue(error.response?.data?.message || 'Failed to purchase membership');
     }
@@ -45,10 +50,10 @@ export const purchaseMembership = createAsyncThunk(
 
 export const fetchMemberBookings = createAsyncThunk(
   'member/fetchMemberBookings',
-  async (memberId, { rejectWithValue }) => {
+  async (_, { rejectWithValue }) => {
     try {
-      const response = await axios.get(`${API_BASE_URL}/members/${memberId}/bookings`);
-      return response.data.bookings;
+      const response = await api.get('/members/me');
+      return response.data?.data?.classHistory || [];
     } catch (error) {
       return rejectWithValue(error.response?.data?.message || 'Failed to fetch bookings');
     }
@@ -57,29 +62,12 @@ export const fetchMemberBookings = createAsyncThunk(
 
 export const addToFavorites = createAsyncThunk(
   'member/addToFavorites',
-  async ({ memberId, itemId, itemType }, { rejectWithValue }) => {
-    try {
-      const response = await axios.post(`${API_BASE_URL}/members/${memberId}/favorites`, {
-        itemId,
-        itemType,
-      });
-      return response.data.favorite;
-    } catch (error) {
-      return rejectWithValue(error.response?.data?.message || 'Failed to add to favorites');
-    }
-  }
+  async (_, { rejectWithValue }) => rejectWithValue('Favorites endpoint is not available yet')
 );
 
 export const removeFromFavorites = createAsyncThunk(
   'member/removeFromFavorites',
-  async ({ memberId, itemId }, { rejectWithValue }) => {
-    try {
-      await axios.delete(`${API_BASE_URL}/members/${memberId}/favorites/${itemId}`);
-      return itemId;
-    } catch (error) {
-      return rejectWithValue(error.response?.data?.message || 'Failed to remove from favorites');
-    }
-  }
+  async (_, { rejectWithValue }) => rejectWithValue('Favorites endpoint is not available yet')
 );
 
 // Slice

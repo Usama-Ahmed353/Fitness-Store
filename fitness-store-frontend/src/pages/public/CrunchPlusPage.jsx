@@ -3,22 +3,31 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { Swiper, SwiperSlide } from 'swiper/react';
 import { Navigation, Pagination, Autoplay } from 'swiper/modules';
-import { Play, Zap, Users, Clock, CheckCircle } from 'lucide-react';
+import { Play, Zap, Users, Clock, CheckCircle, Activity, Dumbbell, Target, Flame, Star } from 'lucide-react';
 import Button from '../../components/ui/Button';
 import Card from '../../components/ui/Card';
 import Badge from '../../components/ui/Badge';
+import SEO from '../../components/seo/SEO';
 import 'swiper/css';
 import 'swiper/css/navigation';
 import 'swiper/css/pagination';
 
 const CrunchPlusPage = () => {
   const navigate = useNavigate();
+  const appUrl = import.meta.env.VITE_APP_URL || 'http://localhost:5173';
   const [selectedCategory, setSelectedCategory] = useState('live');
 
+  const scrollToSection = (id) => {
+    const section = document.getElementById(id);
+    if (section) {
+      section.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  };
+
   const categories = [
-    { id: 'live', label: 'Live Classes', icon: '🔴' },
-    { id: 'ondemand', label: 'On-Demand', icon: '⏱️' },
-    { id: 'programs', label: 'Guided Programs', icon: '📅' },
+    { id: 'live', label: 'Live Classes', icon: Play },
+    { id: 'ondemand', label: 'On-Demand', icon: Clock },
+    { id: 'programs', label: 'Guided Programs', icon: CheckCircle },
   ];
 
   const liveClasses = [
@@ -27,28 +36,28 @@ const CrunchPlusPage = () => {
       instructor: 'Sarah Chen',
       time: 'Daily 6:00 AM',
       duration: 45,
-      image: '🧘',
+      imageIcon: Users,
     },
     {
       title: 'HIIT Blast',
       instructor: 'Marcus Williams',
       time: 'MWF 5:30 PM',
       duration: 35,
-      image: '🔥',
+      imageIcon: Flame,
     },
     {
       title: 'Evening Strength',
       instructor: 'James Porter',
       time: 'TTh 6:00 PM',
       duration: 50,
-      image: '💪',
+      imageIcon: Dumbbell,
     },
     {
       title: 'Dance Party Cardio',
       instructor: 'Rosa Martinez',
       time: 'Sat 10:00 AM',
       duration: 45,
-      image: '💃',
+      imageIcon: Zap,
     },
   ];
 
@@ -57,25 +66,25 @@ const CrunchPlusPage = () => {
       title: 'Quick Home Cardio',
       duration: 15,
       difficulty: 'Beginner',
-      image: '🏃',
+      imageIcon: Activity,
     },
     {
       title: 'Full Body Strength',
       duration: 30,
       difficulty: 'Intermediate',
-      image: '🏋️',
+      imageIcon: Dumbbell,
     },
     {
       title: 'Core & Abs',
       duration: 20,
       difficulty: 'Advanced',
-      image: '💪',
+      imageIcon: Target,
     },
     {
       title: 'Stretching & Recovery',
       duration: 25,
       difficulty: 'Beginner',
-      image: '🧘',
+      imageIcon: Users,
     },
   ];
 
@@ -84,21 +93,21 @@ const CrunchPlusPage = () => {
       title: '4-Week Fat Loss Program',
       weeks: 4,
       sessions: 16,
-      image: '🔥',
+      imageIcon: Flame,
       description: 'Intensive fat-burning program with daily workouts',
     },
     {
       title: '8-Week Strength Building',
       weeks: 8,
       sessions: 32,
-      image: '💪',
+      imageIcon: Dumbbell,
       description: 'Progressive strength training for muscle gain',
     },
     {
       title: '6-Week Total Transformation',
       weeks: 6,
       sessions: 24,
-      image: '✨',
+      imageIcon: Star,
       description: 'Complete body transformation program',
     },
   ];
@@ -127,7 +136,13 @@ const CrunchPlusPage = () => {
   ];
 
   return (
-    <motion.div
+    <>
+      <SEO
+        title="Crunch+ Digital Workouts"
+        description="Stream live classes, on-demand workouts, and guided fitness programs with Crunch+ from anywhere."
+        canonical={`${appUrl}/crunch-plus`}
+      />
+      <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       transition={{ duration: 0.5 }}
@@ -171,10 +186,10 @@ const CrunchPlusPage = () => {
             transition={{ delay: 0.3 }}
             className="flex flex-col sm:flex-row gap-4 justify-center"
           >
-            <Button variant="primary" size="lg">
+            <Button onClick={() => navigate('/free-trial')} variant="primary" size="lg">
               Start Free Trial
             </Button>
-            <Button variant="outline" size="lg">
+            <Button onClick={() => scrollToSection('content-section')} variant="outline" size="lg">
               Learn More
             </Button>
           </motion.div>
@@ -182,7 +197,7 @@ const CrunchPlusPage = () => {
       </section>
 
       {/* FEATURES SECTION */}
-      <section className="bg-dark-navy py-12 md:py-20">
+      <section id="content-section" className="bg-dark-navy py-12 md:py-20">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
             {features.map((feature, idx) => (
@@ -221,7 +236,7 @@ const CrunchPlusPage = () => {
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
               >
-                {cat.icon} {cat.label}
+                <span className="mr-2 inline-flex align-middle"><cat.icon size={16} /></span>{cat.label}
               </motion.button>
             ))}
           </div>
@@ -262,7 +277,7 @@ const CrunchPlusPage = () => {
                     <SwiperSlide key={idx}>
                       <Card variant="dark" className="h-full">
                         <div className="relative h-40 bg-gradient-to-br from-accent/30 to-secondary/30 rounded-t-lg flex items-center justify-center group overflow-hidden">
-                          <span className="text-5xl">{cls.image}</span>
+                          <cls.imageIcon size={54} className="text-white" />
                           <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-all flex items-center justify-center">
                             <motion.div
                               initial={{ scale: 0 }}
@@ -275,7 +290,7 @@ const CrunchPlusPage = () => {
                         </div>
                         <div className="p-6">
                           <Badge variant="primary" size="sm" className="mb-3">
-                            🔴 LIVE
+                            LIVE
                           </Badge>
                           <h3 className="text-lg font-bold text-white mb-2">{cls.title}</h3>
                           <p className="text-accent text-sm font-semibold mb-3">
@@ -317,7 +332,7 @@ const CrunchPlusPage = () => {
                     >
                       <Card variant="dark-hover">
                         <div className="relative h-40 bg-gradient-to-br from-accent/30 to-secondary/30 rounded-t-lg flex items-center justify-center group overflow-hidden">
-                          <span className="text-5xl">{workout.image}</span>
+                          <workout.imageIcon size={54} className="text-white" />
                           <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-all flex items-center justify-center">
                             <motion.div
                               initial={{ scale: 0 }}
@@ -341,7 +356,7 @@ const CrunchPlusPage = () => {
                               {workout.difficulty}
                             </Badge>
                           </div>
-                          <Button variant="outline" size="sm" className="w-full">
+                          <Button onClick={() => navigate('/membership')} variant="outline" size="sm" className="w-full">
                             Watch Now
                           </Button>
                         </div>
@@ -377,7 +392,7 @@ const CrunchPlusPage = () => {
                     >
                       <Card variant="dark-hover" className="h-full">
                         <div className="relative h-48 bg-gradient-to-br from-accent/30 to-secondary/30 rounded-t-lg flex items-center justify-center">
-                          <span className="text-7xl">{program.image}</span>
+                          <program.imageIcon size={74} className="text-white" />
                         </div>
                         <div className="p-6 flex flex-col h-full">
                           <h3 className="text-2xl font-bold text-white mb-2">
@@ -396,7 +411,7 @@ const CrunchPlusPage = () => {
                               <span>{program.sessions} sessions</span>
                             </div>
                           </div>
-                          <Button variant="primary" size="md" className="w-full">
+                          <Button onClick={() => navigate('/membership')} variant="primary" size="md" className="w-full">
                             Start Program
                           </Button>
                         </div>
@@ -429,7 +444,7 @@ const CrunchPlusPage = () => {
               <Button onClick={() => navigate('/membership')} variant="primary" size="lg">
                 Compare Plans
               </Button>
-              <Button variant="outline" size="lg">
+              <Button onClick={() => navigate('/join')} variant="outline" size="lg">
                 Subscribe Now
               </Button>
             </div>
@@ -481,7 +496,8 @@ const CrunchPlusPage = () => {
           </motion.div>
         </div>
       </section>
-    </motion.div>
+      </motion.div>
+    </>
   );
 };
 

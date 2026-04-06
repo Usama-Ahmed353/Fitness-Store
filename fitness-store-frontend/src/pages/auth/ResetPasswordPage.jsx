@@ -5,6 +5,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { motion } from 'framer-motion';
 import { Eye, EyeOff, CheckCircle, AlertCircle } from 'lucide-react';
+import axios from 'axios';
 import Button from '../../components/ui/Button';
 import Input from '../../components/ui/Input';
 import Card from '../../components/ui/Card';
@@ -26,6 +27,10 @@ const ResetPasswordPage = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState(null);
+  const runtimeHost =
+    typeof window !== 'undefined' ? window.location.hostname : 'localhost';
+  const API_BASE_URL =
+    import.meta.env.VITE_API_BASE_URL || `http://${runtimeHost}:5001/api`;
 
   const token = searchParams.get('token');
 
@@ -41,14 +46,16 @@ const ResetPasswordPage = () => {
 
     setIsSubmitting(true);
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1500));
+      await axios.post(`${API_BASE_URL}/auth/reset-password`, {
+        token,
+        password: data.password,
+      });
       
       setSuccess(true);
       toast.success('Password reset successfully!');
       setTimeout(() => navigate('/login'), 2000);
     } catch (err) {
-      setError('Failed to reset password. Please try again.');
+      setError(err.response?.data?.message || 'Failed to reset password. Please try again.');
       toast.error('Password reset failed');
     } finally {
       setIsSubmitting(false);
@@ -65,8 +72,8 @@ const ResetPasswordPage = () => {
         <Card variant="default" className="max-w-md">
           <div className="p-8 text-center">
             <AlertCircle size={48} className="text-red-500 mx-auto mb-4" />
-            <h2 className="text-xl font-bold text-white mb-2">Invalid Link</h2>
-            <p className="text-light-bg/70 mb-6">
+            <h2 className="text-xl font-bold text-slate-900 mb-2">Invalid Link</h2>
+            <p className="text-slate-600 mb-6">
               Your password reset link is invalid or has expired. Please request a new one.
             </p>
             <Link to="/forgot-password">
@@ -109,7 +116,7 @@ const ResetPasswordPage = () => {
               {/* Header */}
               <div className="text-center mb-8">
                 <h1 className="text-3xl font-bold text-accent mb-2">Crunch</h1>
-                <p className="text-light-bg/70">Create New Password</p>
+                <p className="text-slate-600">Create New Password</p>
               </div>
 
               {!success ? (
@@ -128,7 +135,7 @@ const ResetPasswordPage = () => {
                   )}
 
                   <div>
-                    <label className="block text-sm font-medium text-white mb-2">
+                    <label className="block text-sm font-medium text-slate-700 mb-2">
                       New Password
                     </label>
                     <div className="relative">
@@ -142,7 +149,7 @@ const ResetPasswordPage = () => {
                       <button
                         type="button"
                         onClick={() => setShowPassword(!showPassword)}
-                        className="absolute right-3 top-3 text-light-bg/60 hover:text-light-bg"
+                        className="absolute right-3 top-3 text-slate-500 hover:text-slate-700"
                       >
                         {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
                       </button>
@@ -150,7 +157,7 @@ const ResetPasswordPage = () => {
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-white mb-2">
+                    <label className="block text-sm font-medium text-slate-700 mb-2">
                       Confirm Password
                     </label>
                     <div className="relative">
@@ -164,7 +171,7 @@ const ResetPasswordPage = () => {
                       <button
                         type="button"
                         onClick={() => setShowConfirm(!showConfirm)}
-                        className="absolute right-3 top-3 text-light-bg/60 hover:text-light-bg"
+                        className="absolute right-3 top-3 text-slate-500 hover:text-slate-700"
                       >
                         {showConfirm ? <EyeOff size={20} /> : <Eye size={20} />}
                       </button>
@@ -190,7 +197,7 @@ const ResetPasswordPage = () => {
                     )}
                   </Button>
 
-                  <p className="text-center text-light-bg/70 text-sm">
+                  <p className="text-center text-slate-600 text-sm">
                     <Link to="/login" className="text-accent hover:underline font-semibold">
                       Back to Sign In
                     </Link>
@@ -208,10 +215,10 @@ const ResetPasswordPage = () => {
                     </div>
                   </div>
 
-                  <h2 className="text-xl font-bold text-white mb-2">
+                  <h2 className="text-xl font-bold text-slate-900 mb-2">
                     Password Reset Successfully
                   </h2>
-                  <p className="text-light-bg/70 text-sm">
+                  <p className="text-slate-600 text-sm">
                     Your password has been reset. Redirecting to sign in...
                   </p>
                 </motion.div>

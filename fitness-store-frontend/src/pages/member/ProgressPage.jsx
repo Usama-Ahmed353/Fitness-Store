@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useSelector } from 'react-redux';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useNavigate } from 'react-router-dom';
 import { useTheme } from '../../context/ThemeContext';
 import { useLanguage } from '../../hooks/useLanguage';
 import MemberLayout from '../../layouts/MemberLayout';
@@ -24,13 +25,14 @@ import {
   Target,
   TrendingUp,
   Plus,
-  Edit2,
   Trash2,
-  ChevronDown,
   Award,
   Activity,
-  Calendar,
+  Flame,
+  Sparkles,
+  ArrowLeft,
   Check,
+  ChevronDown,
 } from 'lucide-react';
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
@@ -39,8 +41,13 @@ import { Button } from '../../components/ui/Button';
  * ProgressPage - Member progress tracking and goal management
  */
 const ProgressPage = () => {
+  const navigate = useNavigate();
   const { isDark } = useTheme();
   const { t } = useLanguage();
+  const tx = (key, fallback) => {
+    const value = t(key);
+    return !value || value === key ? fallback : value;
+  };
 
   const { profile, bookings } = useSelector((state) => state.member);
 
@@ -203,6 +210,7 @@ const ProgressPage = () => {
 
   const chartColor = isDark ? '#e5e7eb' : '#1f2937';
   const gridColor = isDark ? '#374151' : '#e5e7eb';
+  const cardVariant = isDark ? 'dark' : 'default';
 
   return (
     <>
@@ -221,19 +229,44 @@ const ProgressPage = () => {
               animate={{ opacity: 1 }}
               className="mb-8"
             >
-              <h1
-                className={`text-3xl md:text-4xl font-bold ${
-                  isDark ? 'text-white' : 'text-gray-900'
-                }`}
-              >
-                {t('member.progress.title') || 'Your Progress'}
-              </h1>
-              <p
-                className={`mt-2 ${isDark ? 'text-gray-400' : 'text-gray-600'}`}
-              >
-                {t('member.progress.subtitle') ||
-                  'Track your fitness journey and manage your goals'}
-              </p>
+              <div className={`relative overflow-hidden rounded-2xl border p-6 md:p-8 ${isDark ? 'border-gray-700 bg-gradient-to-br from-gray-800 via-gray-900 to-slate-900' : 'border-blue-100 bg-gradient-to-br from-blue-50 via-white to-emerald-50'}`}>
+                <div className="absolute -right-10 -top-14 h-40 w-40 rounded-full bg-blue-500/20 blur-2xl" />
+                <div className="absolute -left-10 -bottom-14 h-40 w-40 rounded-full bg-emerald-500/20 blur-2xl" />
+                <button
+                  type="button"
+                  onClick={() => navigate(-1)}
+                  className={`mb-4 inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm font-medium transition ${
+                    isDark
+                      ? 'border-gray-600 bg-gray-800/70 text-gray-200 hover:bg-gray-700'
+                      : 'border-gray-200 bg-white text-gray-700 hover:bg-gray-50'
+                  }`}
+                >
+                  <ArrowLeft className="h-4 w-4" /> Back
+                </button>
+                <h1
+                  className={`text-3xl md:text-4xl font-bold ${
+                    isDark ? 'text-white' : 'text-gray-900'
+                  }`}
+                >
+                  {tx('member.progress.title', 'Your Progress')}
+                </h1>
+                <p
+                  className={`mt-2 ${isDark ? 'text-gray-400' : 'text-gray-600'}`}
+                >
+                  {tx(
+                    'member.progress.subtitle',
+                    'Track your fitness journey and manage your goals'
+                  )}
+                </p>
+                <div className="mt-4 flex flex-wrap items-center gap-2 text-xs font-semibold">
+                  <span className={`inline-flex items-center gap-1 rounded-full px-3 py-1 ${isDark ? 'bg-gray-700 text-gray-200' : 'bg-white border border-gray-200 text-gray-700'}`}>
+                    <Flame className="h-3.5 w-3.5 text-orange-500" /> {bookings?.length || 0} total bookings
+                  </span>
+                  <span className={`inline-flex items-center gap-1 rounded-full px-3 py-1 ${isDark ? 'bg-gray-700 text-gray-200' : 'bg-white border border-gray-200 text-gray-700'}`}>
+                    <Sparkles className="h-3.5 w-3.5 text-emerald-500" /> {goals.length} active goals
+                  </span>
+                </div>
+              </div>
             </motion.div>
 
             {/* Goals Section */}
@@ -248,14 +281,14 @@ const ProgressPage = () => {
                     isDark ? 'text-white' : 'text-gray-900'
                   }`}
                 >
-                  {t('member.progress.goals') || 'Your Goals'}
+                  {tx('member.progress.goals', 'Your Goals')}
                 </h2>
                 <Button
                   onClick={() => setShowGoalModal(true)}
                   icon={Plus}
                   variant="secondary"
                 >
-                  {t('member.progress.addGoal') || 'Add Goal'}
+                  {tx('member.progress.addGoal', 'Add Goal')}
                 </Button>
               </div>
 
@@ -266,7 +299,7 @@ const ProgressPage = () => {
                     initial={{ opacity: 0, scale: 0.9 }}
                     animate={{ opacity: 1, scale: 1 }}
                   >
-                    <Card>
+                    <Card variant={cardVariant}>
                       <div className="flex justify-between items-start mb-4">
                         <div className="flex-1">
                           <h3
@@ -342,19 +375,21 @@ const ProgressPage = () => {
                   isDark ? 'text-white' : 'text-gray-900'
                 }`}
               >
-                {t('member.progress.stats') || 'Workout Statistics'}
+                  {tx('member.progress.stats', 'Workout Statistics')}
               </h2>
 
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
                 {/* Line Chart - Classes Over Time */}
-                <Card>
+                <Card variant={cardVariant}>
                   <h3
                     className={`text-lg font-semibold mb-4 ${
                       isDark ? 'text-white' : 'text-gray-900'
                     }`}
                   >
-                    {t('member.progress.classesPerMonth') ||
-                      'Classes per Month'}
+                    {tx(
+                      'member.progress.classesPerMonth',
+                      'Classes per Month'
+                    )}
                   </h3>
                   <ResponsiveContainer width="100%" height={300}>
                     <LineChart data={classesPerMonth}>
@@ -394,14 +429,16 @@ const ProgressPage = () => {
                 </Card>
 
                 {/* Pie Chart - Class Types */}
-                <Card>
+                <Card variant={cardVariant}>
                   <h3
                     className={`text-lg font-semibold mb-4 ${
                       isDark ? 'text-white' : 'text-gray-900'
                     }`}
                   >
-                    {t('member.progress.classBreakdown') ||
-                      'Class Types Breakdown'}
+                    {tx(
+                      'member.progress.classBreakdown',
+                      'Class Types Breakdown'
+                    )}
                   </h3>
                   <ResponsiveContainer width="100%" height={300}>
                     <PieChart>
@@ -435,14 +472,16 @@ const ProgressPage = () => {
               </div>
 
               {/* Bar Chart - Workouts by Category */}
-              <Card>
+              <Card variant={cardVariant}>
                 <h3
                   className={`text-lg font-semibold mb-4 ${
                     isDark ? 'text-white' : 'text-gray-900'
                   }`}
                 >
-                  {t('member.progress.workoutsByCategory') ||
-                    'Workouts by Category'}
+                  {tx(
+                    'member.progress.workoutsByCategory',
+                    'Workouts by Category'
+                  )}
                 </h3>
                 <ResponsiveContainer width="100%" height={300}>
                   <BarChart data={workoutsByCategory}>
@@ -476,18 +515,18 @@ const ProgressPage = () => {
                     isDark ? 'text-white' : 'text-gray-900'
                   }`}
                 >
-                  {t('member.progress.measurements') || 'Measurements'}
+                  {tx('member.progress.measurements', 'Measurements')}
                 </h2>
                 <Button
                   onClick={() => setShowMeasurementForm(true)}
                   icon={Plus}
                   variant="secondary"
                 >
-                  {t('member.progress.logToday') || 'Log Today'}
+                  {tx('member.progress.logToday', 'Log Today')}
                 </Button>
               </div>
 
-              <Card>
+              <Card variant={cardVariant}>
                 <div className="overflow-x-auto">
                   <table className="w-full text-sm">
                     <thead>
@@ -501,42 +540,42 @@ const ProgressPage = () => {
                             isDark ? 'text-gray-300' : 'text-gray-700'
                           }`}
                         >
-                          {t('member.progress.date') || 'Date'}
+                          {tx('member.progress.date', 'Date')}
                         </th>
                         <th
                           className={`px-4 py-3 text-left font-semibold ${
                             isDark ? 'text-gray-300' : 'text-gray-700'
                           }`}
                         >
-                          {t('member.progress.weight') || 'Weight'}
+                          {tx('member.progress.weight', 'Weight')}
                         </th>
                         <th
                           className={`px-4 py-3 text-left font-semibold ${
                             isDark ? 'text-gray-300' : 'text-gray-700'
                           }`}
                         >
-                          {t('member.progress.bodyFat') || 'Body Fat'}
+                          {tx('member.progress.bodyFat', 'Body Fat')}
                         </th>
                         <th
                           className={`px-4 py-3 text-left font-semibold ${
                             isDark ? 'text-gray-300' : 'text-gray-700'
                           }`}
                         >
-                          {t('member.progress.chest') || 'Chest'}
+                          {tx('member.progress.chest', 'Chest')}
                         </th>
                         <th
                           className={`px-4 py-3 text-left font-semibold ${
                             isDark ? 'text-gray-300' : 'text-gray-700'
                           }`}
                         >
-                          {t('member.progress.waist') || 'Waist'}
+                          {tx('member.progress.waist', 'Waist')}
                         </th>
                         <th
                           className={`px-4 py-3 text-left font-semibold ${
                             isDark ? 'text-gray-300' : 'text-gray-700'
                           }`}
                         >
-                          {t('member.progress.hips') || 'Hips'}
+                          {tx('member.progress.hips', 'Hips')}
                         </th>
                       </tr>
                     </thead>
@@ -613,10 +652,10 @@ const ProgressPage = () => {
                   isDark ? 'text-white' : 'text-gray-900'
                 }`}
               >
-                {t('member.progress.milestones') || 'Milestones'}
+                {tx('member.progress.milestones', 'Milestones')}
               </h2>
 
-              <Card>
+              <Card variant={cardVariant}>
                 <div className="space-y-6">
                   {milestones.map((milestone, idx) => {
                     const Icon = milestone.icon;

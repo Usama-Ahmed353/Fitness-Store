@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import { useForm } from 'react-hook-form';
@@ -6,7 +6,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ArrowRight, ArrowLeft, Check, User, Building2, Award } from 'lucide-react';
-import { registerAsync } from '../../app/slices/authSlice';
+import { clearAuth, registerAsync } from '../../app/slices/authSlice';
 import Button from '../../components/ui/Button';
 import Input from '../../components/ui/Input';
 import Card from '../../components/ui/Card';
@@ -86,16 +86,10 @@ const mockPlans = [
 const RegisterPage = () => {
   const navigate = useNavigate();
   const dispatch = useDispatch();
-  const { isAuthenticated, isLoading } = useSelector((state) => state.auth);
+  const { isLoading } = useSelector((state) => state.auth);
   const [step, setStep] = useState(1);
   const [accountType, setAccountType] = useState(null);
   const [passwordStrength, setPasswordStrength] = useState('');
-
-  useEffect(() => {
-    if (isAuthenticated) {
-      navigate('/member/dashboard');
-    }
-  }, [isAuthenticated, navigate]);
 
   // Step 2 Form
   const form2 = useForm({
@@ -163,8 +157,19 @@ const RegisterPage = () => {
       const result = await dispatch(registerAsync(payload)).unwrap();
       
       if (result) {
-        toast.success('Account created! Check your email to verify.');
-        navigate('/verify-email');
+        dispatch(clearAuth());
+        if (result.emailSent === false) {
+          toast.error(result.emailError || 'Account created, but verification email could not be sent.');
+          if (result.verificationUrl) {
+            toast('Development mode: using fallback verification link from API response.');
+            const parsedUrl = new URL(result.verificationUrl);
+            navigate(`/verify-email${parsedUrl.search}`);
+            return;
+          }
+        } else {
+          toast.success('Account created! Check your email to verify.');
+        }
+        navigate(`/verify-email?email=${encodeURIComponent(payload.email)}`);
       }
     } catch (err) {
       toast.error(err.message || 'Registration failed');
@@ -210,7 +215,7 @@ const RegisterPage = () => {
           transition={{ delay: 0.1 }}
           className="w-full max-w-md"
         >
-          <Card variant="default" className="border border-accent/30">
+          <Card variant="dark" className="border border-accent/30">
             <div className="p-8">
               {/* Header */}
               <div className="text-center mb-8">
@@ -261,7 +266,7 @@ const RegisterPage = () => {
                               <Icon size={24} className="text-accent" />
                               <div>
                                 <div className="font-semibold text-white">{type.name}</div>
-                                <div className="text-xs text-light-bg/60">{type.description}</div>
+                                <div className="text-xs text-light-bg/70">{type.description}</div>
                               </div>
                             </div>
                           </motion.button>
@@ -282,7 +287,7 @@ const RegisterPage = () => {
                     <form onSubmit={form2.handleSubmit(onSubmitStep2)} className="space-y-4">
                       <div className="grid grid-cols-2 gap-3">
                         <div>
-                          <label className="block text-xs font-medium text-white mb-1">
+                          <label className="block text-xs font-medium text-light-bg/90 mb-1">
                             First Name
                           </label>
                           <Input
@@ -292,7 +297,7 @@ const RegisterPage = () => {
                           />
                         </div>
                         <div>
-                          <label className="block text-xs font-medium text-white mb-1">
+                          <label className="block text-xs font-medium text-light-bg/90 mb-1">
                             Last Name
                           </label>
                           <Input
@@ -304,7 +309,7 @@ const RegisterPage = () => {
                       </div>
 
                       <div>
-                        <label className="block text-xs font-medium text-white mb-1">
+                        <label className="block text-xs font-medium text-light-bg/90 mb-1">
                           Email
                         </label>
                         <Input
@@ -316,7 +321,7 @@ const RegisterPage = () => {
                       </div>
 
                       <div>
-                        <label className="block text-xs font-medium text-white mb-1">
+                        <label className="block text-xs font-medium text-light-bg/90 mb-1">
                           Phone
                         </label>
                         <Input
@@ -327,7 +332,7 @@ const RegisterPage = () => {
                       </div>
 
                       <div>
-                        <label className="block text-xs font-medium text-white mb-1">
+                        <label className="block text-xs font-medium text-light-bg/90 mb-1">
                           Password
                         </label>
                         <Input
@@ -340,7 +345,7 @@ const RegisterPage = () => {
                         {passwordStrength && (
                           <div className="mt-2">
                             <div className="flex justify-between items-center mb-1">
-                              <span className="text-xs text-light-bg/60">Strength:</span>
+                              <span className="text-xs text-light-bg/70">Strength:</span>
                               <span className={`text-xs font-semibold ${
                                 passwordStrength === 'Weak' ? 'text-red-400' :
                                 passwordStrength === 'Fair' ? 'text-yellow-400' :
@@ -366,7 +371,7 @@ const RegisterPage = () => {
                       </div>
 
                       <div>
-                        <label className="block text-xs font-medium text-white mb-1">
+                        <label className="block text-xs font-medium text-light-bg/90 mb-1">
                           Confirm Password
                         </label>
                         <Input
@@ -411,7 +416,7 @@ const RegisterPage = () => {
                     {accountType === 'member' ? (
                       <form onSubmit={form3Member.handleSubmit(onSubmitStep3)} className="space-y-4">
                         <div>
-                          <label className="block text-xs font-medium text-white mb-2">
+                          <label className="block text-xs font-medium text-light-bg/90 mb-2">
                             Select Your Gym
                           </label>
                           <select
@@ -433,7 +438,7 @@ const RegisterPage = () => {
                         </div>
 
                         <div>
-                          <label className="block text-xs font-medium text-white mb-2">
+                          <label className="block text-xs font-medium text-light-bg/90 mb-2">
                             Choose Your Plan
                           </label>
                           <select
@@ -501,7 +506,7 @@ const RegisterPage = () => {
                     ) : (
                       <form onSubmit={form3Owner.handleSubmit(onSubmitStep3)} className="space-y-4">
                         <div>
-                          <label className="block text-xs font-medium text-white mb-1">
+                          <label className="block text-xs font-medium text-light-bg/90 mb-1">
                             Gym Name
                           </label>
                           <Input
@@ -512,7 +517,7 @@ const RegisterPage = () => {
                         </div>
 
                         <div>
-                          <label className="block text-xs font-medium text-white mb-1">
+                          <label className="block text-xs font-medium text-light-bg/90 mb-1">
                             Address
                           </label>
                           <Input
@@ -523,7 +528,7 @@ const RegisterPage = () => {
                         </div>
 
                         <div>
-                          <label className="block text-xs font-medium text-white mb-1">
+                          <label className="block text-xs font-medium text-light-bg/90 mb-1">
                             Phone
                           </label>
                           <Input

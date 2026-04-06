@@ -9,6 +9,7 @@ const {
   resetPassword,
   getMe,
   changePassword,
+  updateMe,
 } = require('../controllers/auth.controller');
 const { verifyToken } = require('../middleware/auth');
 
@@ -19,12 +20,15 @@ router.post('/register', register);
 router.post('/login', login);
 router.post('/refresh-token', refreshToken);
 router.post('/refresh', refreshToken);
+router.get('/verify-email', verifyEmail);
 router.get('/verify-email/:token', verifyEmail);
 router.post('/forgot-password', forgotPassword);
+router.post('/reset-password', resetPassword);
 router.post('/reset-password/:token', resetPassword);
 
 // Protected routes
 router.get('/me', verifyToken, getMe);
+router.patch('/me', verifyToken, updateMe);
 router.post('/change-password', verifyToken, changePassword);
 router.post('/logout', verifyToken, logout);
 

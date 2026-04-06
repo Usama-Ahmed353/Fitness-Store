@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTheme } from '../../context/ThemeContext';
 import { useLanguage } from '../../hooks/useLanguage';
-import { Star, X, ChevronLeft, ChevronRight, Award, Clock } from 'lucide-react';
+import { Star, X, ChevronLeft, ChevronRight, Award, Clock, User } from 'lucide-react';
 
 /**
  * TrainerProfileModal - Full trainer profile with gallery, certifications, reviews
@@ -11,6 +11,15 @@ const TrainerProfileModal = ({ trainer, onClose, onBook }) => {
   const { isDark } = useTheme();
   const { t } = useLanguage();
   const [currentGalleryIndex, setCurrentGalleryIndex] = useState(0);
+  const [avatarFailed, setAvatarFailed] = useState(false);
+  const [galleryFailed, setGalleryFailed] = useState({});
+
+  const trainerInitials = (trainer.name || 'Trainer')
+    .split(' ')
+    .map((n) => n[0])
+    .join('')
+    .slice(0, 2)
+    .toUpperCase();
 
   const daysOfWeek = [
     'monday',
@@ -74,11 +83,19 @@ const TrainerProfileModal = ({ trainer, onClose, onBook }) => {
                 isDark ? 'bg-gray-700/50' : 'bg-gray-50'
               }`}
             >
-              <img
-                src={trainer.photo}
-                alt={trainer.name}
-                className="w-20 h-20 rounded-lg object-cover"
-              />
+              {!avatarFailed && trainer.photo ? (
+                <img
+                  src={trainer.photo}
+                  alt={trainer.name}
+                  onError={() => setAvatarFailed(true)}
+                  className="w-20 h-20 rounded-lg object-cover"
+                />
+              ) : (
+                <div className="w-20 h-20 rounded-lg bg-gradient-to-br from-accent to-secondary flex flex-col items-center justify-center text-white">
+                  <User className="w-6 h-6 mb-1" />
+                  <span className="text-xs font-bold tracking-[0.1em]">{trainerInitials}</span>
+                </div>
+              )}
               <div>
                 <div className="flex items-center gap-2 mb-2">
                   <div className="flex">
@@ -211,11 +228,26 @@ const TrainerProfileModal = ({ trainer, onClose, onBook }) => {
                   {t('member.trainers.gallery') || 'Gallery'}
                 </h3>
                 <div className="relative">
-                  <img
-                    src={trainer.gallery[currentGalleryIndex]}
-                    alt={`Gallery ${currentGalleryIndex + 1}`}
-                    className="w-full h-64 object-cover rounded-lg"
-                  />
+                  {!galleryFailed[currentGalleryIndex] ? (
+                    <img
+                      src={trainer.gallery[currentGalleryIndex]}
+                      alt={`Gallery ${currentGalleryIndex + 1}`}
+                      onError={() =>
+                        setGalleryFailed((prev) => ({
+                          ...prev,
+                          [currentGalleryIndex]: true,
+                        }))
+                      }
+                      className="w-full h-64 object-cover rounded-lg"
+                    />
+                  ) : (
+                    <div className="w-full h-64 rounded-lg bg-gradient-to-br from-accent to-secondary flex items-center justify-center text-white">
+                      <div className="text-center">
+                        <User className="w-10 h-10 mx-auto mb-2" />
+                        <p className="text-sm font-semibold">Training Gallery</p>
+                      </div>
+                    </div>
+                  )}
                   {trainer.gallery.length > 1 && (
                     <>
                       <button

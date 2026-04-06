@@ -10,7 +10,7 @@ import { useTheme } from '../../../context/ThemeContext';
 import { useLanguage } from '../../../context/LanguageContext';
 import { CATEGORY_INFO } from '../../../utils/forumCalculator';
 
-const CreatePostModal = ({ userId, userName, onClose, onSubmit }) => {
+const CreatePostModal = ({ onClose, onSubmit }) => {
   const { isDark } = useTheme();
   const { t } = useLanguage();
 
@@ -24,6 +24,7 @@ const CreatePostModal = ({ userId, userName, onClose, onSubmit }) => {
 
   const [errors, setErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState('');
 
   const categories = [
     { value: 'general', label: 'General Discussion' },
@@ -97,32 +98,24 @@ const CreatePostModal = ({ userId, userName, onClose, onSubmit }) => {
 
     setIsSubmitting(true);
 
-    // Simulate submission delay
-    setTimeout(() => {
-      const newPost = {
-        id: Math.random(),
+    setSubmitError('');
+
+    try {
+      await onSubmit({
         title: formData.title,
         content: formData.content,
         category: formData.category,
         tags: formData.tags
           .split(',')
-          .map(tag => tag.trim())
-          .filter(tag => tag),
-        authorId: userId,
-        author: {
-          name: userName,
-          avatar: '👤'
-        },
-        likes: 0,
-        comments: [],
-        createdAt: new Date(),
-        views: 0,
-        shares: 0
-      };
-
-      onSubmit(newPost);
+          .map((tag) => tag.trim())
+          .filter((tag) => tag),
+      });
       setIsSubmitting(false);
-    }, 1000);
+      onClose();
+    } catch (error) {
+      setSubmitError(error?.message || 'Failed to publish post');
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -325,6 +318,12 @@ const CreatePostModal = ({ userId, userName, onClose, onSubmit }) => {
               </ul>
             </div>
           </motion.div>
+
+          {submitError && (
+            <p className={`text-sm ${isDark ? 'text-red-400' : 'text-red-600'}`}>
+              {submitError}
+            </p>
+          )}
         </form>
 
         {/* Footer */}

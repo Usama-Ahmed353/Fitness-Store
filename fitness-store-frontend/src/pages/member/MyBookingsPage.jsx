@@ -13,6 +13,10 @@ import {
   Clock,
   MapPin,
   Star,
+  Activity,
+  Heart,
+  Zap,
+  Dumbbell,
   Trash2,
   AlertCircle,
   CheckCircle,
@@ -36,9 +40,29 @@ const MyBookingsPage = () => {
   const [showCancellationModal, setShowCancellationModal] = useState(false);
   const [showReviewModal, setShowReviewModal] = useState(false);
   const [selectedBooking, setSelectedBooking] = useState(null);
+  const [imageErrors, setImageErrors] = useState({});
   const [reviews, setReviews] = useState({
     1: { rating: 5, text: 'Amazing class! Sarah is a great instructor.' },
   });
+
+  const getBookingVisual = (className = '') => {
+    const lower = className.toLowerCase();
+
+    if (lower.includes('spin')) {
+      return { Icon: Activity, gradient: 'from-blue-500 to-indigo-600' };
+    }
+    if (lower.includes('yoga') || lower.includes('pilates')) {
+      return { Icon: Heart, gradient: 'from-emerald-500 to-teal-600' };
+    }
+    if (lower.includes('hiit') || lower.includes('boxing')) {
+      return { Icon: Zap, gradient: 'from-orange-500 to-rose-600' };
+    }
+    if (lower.includes('zumba')) {
+      return { Icon: Activity, gradient: 'from-pink-500 to-purple-600' };
+    }
+
+    return { Icon: Dumbbell, gradient: 'from-slate-600 to-slate-800' };
+  };
 
   // Mock booking data
   const bookings = [
@@ -243,6 +267,8 @@ END:VCALENDAR`;
     const hasReview = reviews[booking.classId];
     const timeRemaining = getTimeUntilClass(booking.date, booking.time);
     const canCancel = isCancellationAllowed(booking.date, booking.time);
+    const { Icon, gradient } = getBookingVisual(booking.className);
+    const showImage = Boolean(booking.image && !imageErrors[booking.id]);
 
     return (
       <motion.div
@@ -250,14 +276,32 @@ END:VCALENDAR`;
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
       >
-        <Card className="overflow-hidden hover:shadow-lg transition-shadow">
+        <Card
+          variant={isDark ? 'dark' : 'default'}
+          className="overflow-hidden hover:shadow-lg transition-shadow"
+        >
           <div className="flex flex-col md:flex-row gap-4">
             {/* Class Image */}
-            <img
-              src={booking.image}
-              alt={booking.className}
-              className="w-full md:w-48 h-32 object-cover"
-            />
+            {showImage ? (
+              <img
+                src={booking.image}
+                alt={booking.className}
+                onError={() =>
+                  setImageErrors((prev) => ({
+                    ...prev,
+                    [booking.id]: true,
+                  }))
+                }
+                className="w-full md:w-48 h-32 object-cover"
+              />
+            ) : (
+              <div className={`w-full md:w-48 h-32 bg-gradient-to-br ${gradient} flex flex-col items-center justify-center text-white p-3`}>
+                <Icon className="w-7 h-7 mb-2" />
+                <span className="text-xs font-semibold text-center leading-tight">
+                  {booking.className}
+                </span>
+              </div>
+            )}
 
             {/* Class Details */}
             <div className="flex-1 p-4 md:p-6 flex flex-col justify-between">
@@ -556,7 +600,7 @@ END:VCALENDAR`;
               className="space-y-4"
             >
               {filteredBookings.length === 0 ? (
-                <Card>
+                <Card variant={isDark ? 'dark' : 'default'}>
                   <div className="flex items-center justify-center py-12">
                     <div className="text-center">
                       <AlertCircle

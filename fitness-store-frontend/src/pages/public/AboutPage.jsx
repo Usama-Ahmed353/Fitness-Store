@@ -1,11 +1,15 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { Heart, Users, Zap, Target, Award, Globe } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { Heart, Users, Zap, Target, Award, Globe, MapPin, Star, Activity } from 'lucide-react';
 import Button from '../../components/ui/Button';
 import Card from '../../components/ui/Card';
 import Badge from '../../components/ui/Badge';
+import SEO from '../../components/seo/SEO';
 
 const AboutPage = () => {
+  const navigate = useNavigate();
+  const appUrl = import.meta.env.VITE_APP_URL || 'http://localhost:5173';
   const values = [
     {
       icon: Heart,
@@ -32,37 +36,37 @@ const AboutPage = () => {
       year: '2010',
       title: 'The Beginning',
       description: 'Crunch Fitness founded with a simple mission: fitness for everyone.',
-      icon: '🚀',
+      icon: Zap,
     },
     {
       year: '2015',
       title: 'First 100 Gyms',
       description: 'Expanded to 100+ locations across North America.',
-      icon: '📍',
+      icon: MapPin,
     },
     {
       year: '2018',
       title: 'Digital Revolution',
       description: 'Launched Crunch+ streaming platform for at-home workouts.',
-      icon: '💻',
+      icon: Activity,
     },
     {
       year: '2021',
       title: 'Community Milestone',
       description: 'Reached 1 million active members across all platforms.',
-      icon: '👥',
+      icon: Users,
     },
     {
       year: '2023',
       title: 'Global Expansion',
       description: 'Opened first international locations in Europe and Asia.',
-      icon: '🌍',
+      icon: Globe,
     },
     {
       year: '2024',
       title: 'Today',
       description: 'Serving fitness enthusiasts with premium gyms and digital content worldwide.',
-      icon: '⭐',
+      icon: Star,
     },
   ];
 
@@ -83,7 +87,13 @@ const AboutPage = () => {
   ];
 
   return (
-    <motion.div
+    <>
+      <SEO
+        title="About CrunchFit Pro"
+        description="Learn about CrunchFit Pro values, mission, and global fitness community built for all levels."
+        canonical={`${appUrl}/about`}
+      />
+      <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       transition={{ duration: 0.5 }}
@@ -159,17 +169,17 @@ const AboutPage = () => {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               {[
                 {
-                  icon: '🙅',
+                  icon: Heart,
                   title: 'No judgment on your body',
                   desc: 'Every body is a good body. We celebrate all shapes, sizes, and fitness levels.',
                 },
                 {
-                  icon: '🎯',
+                  icon: Target,
                   title: 'No judgment on your goals',
                   desc: 'Whether you want to lose weight, gain muscle, or just feel better, your goals matter.',
                 },
                 {
-                  icon: '🤝',
+                  icon: Users,
                   title: 'No judgment on your journey',
                   desc: 'Starting at square one? Starting over? We support you every step of the way.',
                 },
@@ -181,7 +191,9 @@ const AboutPage = () => {
                   transition={{ delay: idx * 0.1 }}
                   className="p-8 rounded-lg bg-dark-navy/50 border border-accent/20 hover:border-accent/50 transition-all"
                 >
-                  <div className="text-4xl mb-4">{item.icon}</div>
+                  <div className="mb-4 inline-flex rounded-2xl border border-accent/30 bg-accent/10 p-3">
+                    <item.icon size={28} className="text-accent" />
+                  </div>
                   <h3 className="text-xl font-bold text-white mb-3">{item.title}</h3>
                   <p className="text-light-bg/70">{item.desc}</p>
                 </motion.div>
@@ -280,7 +292,7 @@ const AboutPage = () => {
                 {/* Timeline dot */}
                 <div className="flex flex-col items-center">
                   <div className="w-12 h-12 rounded-full bg-accent flex items-center justify-center text-xl font-bold">
-                    {item.icon}
+                    <item.icon size={20} className="text-dark-navy" />
                   </div>
                   {idx !== timeline.length - 1 && (
                     <div className="w-1 h-20 bg-accent/30 mt-4" />
@@ -344,13 +356,14 @@ const AboutPage = () => {
             <p className="text-light-bg/80 text-lg mb-8">
               Become part of the fitness revolution. No judgments. Just gains.
             </p>
-            <Button variant="primary" size="lg">
+            <Button onClick={() => navigate('/free-trial')} variant="primary" size="lg">
               Start Your Free Trial
             </Button>
           </motion.div>
         </div>
       </section>
-    </motion.div>
+      </motion.div>
+    </>
   );
 };
 

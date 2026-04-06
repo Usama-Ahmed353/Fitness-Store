@@ -5,6 +5,7 @@ import { verifyTokenAsync, setStore } from '../app/slices/authSlice';
 import { useStore } from 'react-redux';
 import Navbar from '../components/layout/Navbar';
 import Footer from '../components/layout/Footer';
+import MemberSidebarLayout from '../layouts/MemberLayout';
 import ErrorBoundary from '../components/error/ErrorBoundary';
 import LoadingFallback from '../components/loading/LoadingFallback';
 import GlobalLoadingBar from '../components/loading/GlobalLoadingBar';
@@ -29,6 +30,10 @@ const ProfileSetupPage = React.lazy(() => import('../pages/member/ProfileSetupPa
 const DashboardPage = React.lazy(() => import('../pages/member/DashboardPage'));
 const CheckInPage = React.lazy(() => import('../pages/member/CheckInPage'));
 const ProgressPage = React.lazy(() => import('../pages/member/ProgressPage'));
+const NutritionPage = React.lazy(() => import('../pages/member/NutritionPage'));
+const ChallengesPage = React.lazy(() => import('../pages/member/ChallengesPage'));
+const CommunityPage = React.lazy(() => import('../pages/member/community/CommunityPage'));
+const MemberSettingsPage = React.lazy(() => import('../pages/member/settings/SettingsPage'));
 const MemberClassesPage = React.lazy(() => import('../pages/member/ClassesPage'));
 const MemberBookings = React.lazy(() => import('../pages/member/Bookings'));
 const MyBookingsPage = React.lazy(() => import('../pages/member/MyBookingsPage'));
@@ -49,6 +54,13 @@ const WishlistPage = React.lazy(() => import('../pages/shop/WishlistPage'));
 const AdminProductsPage = React.lazy(() => import('../pages/admin/ProductsPage'));
 const AdminOrdersPage = React.lazy(() => import('../pages/admin/OrdersPage'));
 const AdminMembersPage = React.lazy(() => import('../pages/admin/MembersPage'));
+const AdminGymsPage = React.lazy(() => import('../pages/admin/GymsPage'));
+const AdminClassesPage = React.lazy(() => import('../pages/admin/ClassManagementPage'));
+const AdminTrainersPage = React.lazy(() => import('../pages/admin/TrainerManagementPage'));
+const AdminPaymentsPage = React.lazy(() => import('../pages/admin/FinancialSettlementPage'));
+const AdminReportsPage = React.lazy(() => import('../pages/admin/ReportsPage'));
+const AdminContentPage = React.lazy(() => import('../pages/admin/BlogPage'));
+const AdminSettingsPage = React.lazy(() => import('../pages/admin/SettingsPage'));
 
 // Protected Route Component
 const ProtectedRoute = ({ children, requiredRole = null }) => {
@@ -81,13 +93,9 @@ const PublicLayout = ({ children }) => (
 
 // Member Layout (with Navbar and Footer, protected)
 const MemberLayout = ({ children }) => (
-  <div className="flex flex-col min-h-screen bg-dark-navy dark:bg-gray-900">
-    <Navbar />
-    <main id="main-content" className="flex-grow pt-4">
-      <Suspense fallback={<LoadingFallback />}>{children}</Suspense>
-    </main>
-    <Footer />
-  </div>
+  <MemberSidebarLayout>
+    <Suspense fallback={<LoadingFallback />}>{children}</Suspense>
+  </MemberSidebarLayout>
 );
 
 // Admin Layout (protected)
@@ -113,7 +121,7 @@ const GymOwnerLayout = ({ children }) => (
 const AppRouter = () => {
   const dispatch = useDispatch();
   const store = useStore();
-  const { accessToken, isTokenVerifying } = useSelector((state) => state.auth);
+  const { accessToken, isTokenVerifying, user } = useSelector((state) => state.auth);
 
   // Initialize store reference for interceptors
   useEffect(() => {
@@ -362,6 +370,50 @@ const AppRouter = () => {
           }
         />
 
+        <Route
+          path="/member/nutrition"
+          element={
+            <ProtectedRoute>
+              <MemberLayout>
+                <NutritionPage />
+              </MemberLayout>
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/member/challenges"
+          element={
+            <ProtectedRoute>
+              <MemberLayout>
+                <ChallengesPage />
+              </MemberLayout>
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/member/community"
+          element={
+            <ProtectedRoute>
+              <MemberLayout>
+                <CommunityPage userId={user?.id} currentUser={user} />
+              </MemberLayout>
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/member/settings"
+          element={
+            <ProtectedRoute>
+              <MemberLayout>
+                <MemberSettingsPage />
+              </MemberLayout>
+            </ProtectedRoute>
+          }
+        />
+
         {/* Admin Protected Routes */}
         <Route
           path="/admin"
@@ -392,6 +444,79 @@ const AppRouter = () => {
               <AdminLayout>
                 <AdminMembersPage />
               </AdminLayout>
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/admin/gyms"
+          element={
+            <ProtectedRoute requiredRole={['admin', 'super_admin']}>
+              <AdminGymsPage />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/admin/classes"
+          element={
+            <ProtectedRoute requiredRole={['admin', 'super_admin']}>
+              <AdminClassesPage />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/admin/trainers"
+          element={
+            <ProtectedRoute requiredRole={['admin', 'super_admin']}>
+              <AdminTrainersPage />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/admin/payments"
+          element={
+            <ProtectedRoute requiredRole={['admin', 'super_admin']}>
+              <AdminPaymentsPage />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/admin/reports"
+          element={
+            <ProtectedRoute requiredRole={['admin', 'super_admin']}>
+              <AdminReportsPage />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/admin/content"
+          element={
+            <ProtectedRoute requiredRole={['admin', 'super_admin']}>
+              <AdminContentPage />
+            </ProtectedRoute>
+          }
+        />
+
+        {/* Backward-compatible alias in case users navigate to /admin/contents */}
+        <Route
+          path="/admin/contents"
+          element={
+            <ProtectedRoute requiredRole={['admin', 'super_admin']}>
+              <AdminContentPage />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/admin/settings"
+          element={
+            <ProtectedRoute requiredRole={['admin', 'super_admin']}>
+              <AdminSettingsPage />
             </ProtectedRoute>
           }
         />

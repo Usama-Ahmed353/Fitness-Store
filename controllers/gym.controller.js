@@ -3,6 +3,9 @@ const Gym = require('../models/Gym');
 const Review = require('../models/Review');
 const Class = require('../models/Class');
 const Trainer = require('../models/Trainer');
+const Member = require('../models/Member');
+const Payment = require('../models/Payment');
+const ClassBooking = require('../models/ClassBooking');
 
 // @desc    Get all gyms with filters and geosearch
 // @route   GET /api/gyms
@@ -425,5 +428,145 @@ exports.deleteGym = async (req, res, next) => {
     });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// @desc    Get gym owner dashboard analytics
+// @route   GET /api/gyms/owner/dashboard
+// @access  Private (gym_owner)
+exports.getOwnerDashboard = async (req, res) => {
+  try {
+    const gym = await Gym.findOne({ ownerId: req.user.id, isActive: true })
+      .sort({ createdAt: -1 })
+      .select('name slug isVerified memberCount rating reviewCount createdAt');
+
+    if (!gym) {
+      return res.status(200).json({
+        success: true,
+        data: {
+          requiresSetup: true,
+          gym: null,
+          metrics: {
+            totalMembers: 0,
+            activeMembers: 0,
+            totalClasses: 0,
+            totalTrainers: 0,
+            monthlyRevenue: 0,
+          },
+          monthlyRevenue: [],
+          todayClasses: [],
+          classes: [],
+          recentBookings: [],
+          alerts: [],
+        },
+      });
+    }
+
+    const [totalMembers, activeMembers, totalClasses, totalTrainers] = await Promise.all([
+      Member.countDocuments({ gymId: gym._id }),
+      Member.countDocuments({ gymId: gym._id, membershipStatus: 'active' }),
+      Class.countDocuments({ gymId: gym._id, isActive: true, isCanceled: false }),
+      Trainer.countDocuments({ gymId: gym._id, isActive: true }),
+    ]);
+
+    const monthStart = new Date();
+    monthStart.setDate(1);
+    monthStart.setHours(0, 0, 0, 0);
+
+    const [monthRevenueAgg, monthlyRevenue, recentBookings, classes] = await Promise.all([
+      Payment.aggregate([
+        {
+          $match: {
+            gymId: gym._id,
+            status: 'completed',
+            createdAt: { $gte: monthStart },
+          },
+        },
+        { $group: { _id: null, total: { $sum: '$amount' } } },
+      ]),
+      Payment.aggregate([
+        {
+          $match: {
+            gymId: gym._id,
+            status: 'completed',
+            createdAt: {
+              $gte: new Date(new Date().setMonth(new Date().getMonth() - 5)),
+            },
+          },
+        },
+        {
+          $group: {
+            _id: {
+              year: { $year: '$createdAt' },
+              month: { $month: '$createdAt' },
+            },
+            revenue: { $sum: '$amount' },
+            payments: { $sum: 1 },
+          },
+        },
+        { $sort: { '_id.year': 1, '_id.month': 1 } },
+      ]),
+      ClassBooking.find({ status: 'booked' })
+        .sort({ createdAt: -1 })
+        .limit(8)
+        .populate({
+          path: 'classId',
+          match: { gymId: gym._id },
+          select: 'name schedule',
+        })
+        .populate({
+          path: 'memberId',
+          select: 'userId',
+          populate: { path: 'userId', select: 'firstName lastName' },
+        }),
+      Class.find({ gymId: gym._id, isActive: true, isCanceled: false })
+        .select('name schedule currentBookings maxCapacity')
+        .sort({ createdAt: -1 })
+        .limit(6),
+    ]);
+
+    const bookingsForGym = recentBookings.filter((b) => b.classId);
+
+    const today = new Date();
+    const todayName = today.toLocaleDateString('en-US', { weekday: 'long' }).toLowerCase();
+    const todayClasses = classes.filter((c) => (c.schedule?.dayOfWeek || '').toLowerCase() === todayName);
+
+    const lowAttendanceClasses = classes
+      .filter((c) => c.maxCapacity > 0 && c.currentBookings / c.maxCapacity < 0.3)
+      .slice(0, 3)
+      .map((c) => ({
+        type: 'class',
+        message: `${c.name} is below 30% capacity`,
+      }));
+
+    const response = {
+      gym,
+      metrics: {
+        totalMembers,
+        activeMembers,
+        totalClasses,
+        totalTrainers,
+        monthlyRevenue: monthRevenueAgg[0]?.total || 0,
+      },
+      monthlyRevenue: monthlyRevenue.map((m) => ({
+        label: `${m._id.month}/${m._id.year}`,
+        revenue: m.revenue,
+        payments: m.payments,
+      })),
+      todayClasses,
+      classes,
+      recentBookings: bookingsForGym.map((b) => ({
+        _id: b._id,
+        className: b.classId?.name,
+        memberName: `${b.memberId?.userId?.firstName || ''} ${b.memberId?.userId?.lastName || ''}`.trim(),
+        bookedAt: b.bookedAt,
+        schedule: b.classId?.schedule,
+      })),
+      alerts: lowAttendanceClasses,
+    };
+
+    return res.status(200).json({ success: true, data: response });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: error.message });
   }
 };

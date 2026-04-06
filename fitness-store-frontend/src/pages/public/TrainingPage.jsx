@@ -7,6 +7,9 @@ import {
   CheckCircle,
   Zap,
   Users,
+  Target,
+  Activity,
+  Dumbbell,
   Trophy,
   Award,
   Star,
@@ -16,18 +19,39 @@ import Button from '../../components/ui/Button';
 import Card from '../../components/ui/Card';
 import Badge from '../../components/ui/Badge';
 import Rating from '../../components/ui/Rating';
+import SEO from '../../components/seo/SEO';
 import 'swiper/css';
 import 'swiper/css/navigation';
 import 'swiper/css/pagination';
 
 const TrainingPage = () => {
   const navigate = useNavigate();
+  const appUrl = import.meta.env.VITE_APP_URL || 'http://localhost:5173';
+
+  const scrollToSection = (id) => {
+    const target = document.getElementById(id);
+    if (target) {
+      target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  };
+
+  const startProgramFlow = () => {
+    navigate('/free-trial');
+  };
+
+  const openTrainerBooking = () => {
+    navigate('/member/trainers');
+  };
+
+  const openConsultation = () => {
+    navigate('/contact');
+  };
 
   const benefits = [
-    { icon: '🎯', label: 'Custom Workout Plans', desc: 'Tailored to your goals and fitness level' },
-    { icon: '📈', label: 'Progress Tracking', desc: 'Real-time metrics and improvement monitoring' },
-    { icon: '💪', label: 'Motivation & Accountability', desc: 'One-on-one support every step' },
-    { icon: '🏆', label: 'Expert Guidance', desc: 'Certified trainers with 5+ years experience' },
+    { icon: Target, label: 'Custom Workout Plans', desc: 'Tailored to your goals and fitness level', action: () => scrollToSection('trainers') },
+    { icon: Activity, label: 'Progress Tracking', desc: 'Real-time metrics and improvement monitoring', action: () => navigate('/member/progress') },
+    { icon: Dumbbell, label: 'Motivation & Accountability', desc: 'One-on-one support every step', action: openConsultation },
+    { icon: Trophy, label: 'Expert Guidance', desc: 'Certified trainers with 5+ years experience', action: openTrainerBooking },
   ];
 
   const certifications = [
@@ -38,12 +62,12 @@ const TrainingPage = () => {
   ];
 
   const equipment = [
-    { name: 'Battle Ropes', emoji: '🔗' },
-    { name: 'Kettlebells', emoji: '⚫' },
-    { name: 'TRX Straps', emoji: '🎯' },
-    { name: 'Bulgarian Bags', emoji: '💼' },
-    { name: 'Medicine Balls', emoji: '🏋️' },
-    { name: 'Resistance Bands', emoji: '🟦' },
+    { name: 'Battle Ropes', icon: Activity },
+    { name: 'Kettlebells', icon: Dumbbell },
+    { name: 'TRX Straps', icon: Target },
+    { name: 'Bulgarian Bags', icon: Award },
+    { name: 'Medicine Balls', icon: Trophy },
+    { name: 'Resistance Bands', icon: Zap },
   ];
 
   const trainers = [
@@ -53,7 +77,7 @@ const TrainingPage = () => {
       experience: 8,
       rating: 4.9,
       reviews: 127,
-      image: '👨‍🏫',
+      avatar: 'MJ',
       bio: 'NASM Certified, specializes in powerlifting',
     },
     {
@@ -62,7 +86,7 @@ const TrainingPage = () => {
       experience: 6,
       rating: 4.8,
       reviews: 98,
-      image: '👩‍🏫',
+      avatar: 'SM',
       bio: 'Expert in high-intensity interval training',
     },
     {
@@ -71,7 +95,7 @@ const TrainingPage = () => {
       experience: 10,
       rating: 4.9,
       reviews: 156,
-      image: '👨',
+      avatar: 'JC',
       bio: 'Specializes in mobility and injury prevention',
     },
     {
@@ -80,13 +104,19 @@ const TrainingPage = () => {
       experience: 7,
       rating: 4.8,
       reviews: 112,
-      image: '👩',
+      avatar: 'EW',
       bio: 'Certified nutritionist and wellness coach',
     },
   ];
 
   return (
-    <motion.div
+    <>
+      <SEO
+        title="Personal Training Programs"
+        description="Book personal training, HIIT, group sessions, and nutrition coaching with certified CrunchFit Pro trainers."
+        canonical={`${appUrl}/training`}
+      />
+      <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       transition={{ duration: 0.5 }}
@@ -131,7 +161,7 @@ const TrainingPage = () => {
             transition={{ delay: 0.3 }}
             className="flex flex-col sm:flex-row gap-4 justify-center"
           >
-            <Button onClick={() => navigate('#trainers')} variant="primary" size="lg">
+            <Button onClick={() => scrollToSection('trainers')} variant="primary" size="lg">
               Book a Session
             </Button>
             <Button onClick={() => navigate('/free-trial')} variant="outline" size="lg">
@@ -147,7 +177,7 @@ const TrainingPage = () => {
           transition={{ delay: 0.4 }}
           className="absolute right-0 bottom-0 opacity-20 z-0 hidden lg:block"
         >
-          <div className="text-9xl">💪</div>
+          <Dumbbell size={160} className="text-accent" />
         </motion.div>
       </section>
 
@@ -176,9 +206,11 @@ const TrainingPage = () => {
                 transition={{ delay: idx * 0.1 }}
                 whileHover={{ y: -10 }}
               >
-                <Card variant="dark-hover">
+                <Card variant="dark-hover" className="cursor-pointer" onClick={benefit.action}>
                   <div className="p-6 text-center h-full flex flex-col items-center justify-center">
-                    <div className="text-4xl mb-4">{benefit.icon}</div>
+                    <div className="mb-4 rounded-2xl border border-accent/30 bg-accent/10 p-3">
+                      <benefit.icon size={28} className="text-accent" />
+                    </div>
                     <h3 className="text-lg font-bold text-white mb-2">{benefit.label}</h3>
                     <p className="text-light-bg/70 text-sm">{benefit.desc}</p>
                   </div>
@@ -221,7 +253,7 @@ const TrainingPage = () => {
       </section>
 
       {/* SMALL GROUP TRAINING */}
-      <section className="bg-dark-navy py-12 md:py-20">
+      <section className="bg-dark-navy py-12 md:py-20" id="group-training">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
             <motion.div
@@ -252,7 +284,7 @@ const TrainingPage = () => {
                   <span className="text-light-bg/80">Same expert trainer guidance</span>
                 </li>
               </ul>
-              <Button variant="primary" size="lg">
+              <Button onClick={startProgramFlow} variant="primary" size="lg">
                 Book Group Session
               </Button>
             </motion.div>
@@ -262,14 +294,14 @@ const TrainingPage = () => {
               whileInView={{ opacity: 1, x: 0 }}
               className="relative h-96 rounded-xl overflow-hidden bg-gradient-to-br from-accent/20 to-secondary/20 flex items-center justify-center"
             >
-              <span className="text-9xl">👥</span>
+              <Users size={128} className="text-white/90" />
             </motion.div>
           </div>
         </div>
       </section>
 
       {/* HIITZONE SECTION */}
-      <section className="bg-gradient-to-r from-accent/10 to-secondary/10 py-12 md:py-20 border-y border-accent/20">
+      <section className="bg-gradient-to-r from-accent/10 to-secondary/10 py-12 md:py-20 border-y border-accent/20" id="hiitzone">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -302,7 +334,7 @@ const TrainingPage = () => {
                     transition={{ delay: idx * 0.05 }}
                     className="flex items-center gap-3 p-3 rounded-lg bg-dark-navy/50 border border-accent/20"
                   >
-                    <span className="text-3xl">{item.emoji}</span>
+                    <item.icon size={20} className="text-accent" />
                     <span className="text-light-bg/80 font-semibold">{item.name}</span>
                   </motion.div>
                 ))}
@@ -341,7 +373,7 @@ const TrainingPage = () => {
             whileInView={{ opacity: 1, y: 0 }}
             className="text-center"
           >
-            <Button variant="primary" size="lg">
+            <Button onClick={startProgramFlow} variant="primary" size="lg">
               Start HIITZone Training
             </Button>
           </motion.div>
@@ -349,7 +381,7 @@ const TrainingPage = () => {
       </section>
 
       {/* NUTRITION SECTION */}
-      <section className="bg-dark-navy py-12 md:py-20">
+      <section className="bg-dark-navy py-12 md:py-20" id="nutrition">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
             <motion.div
@@ -357,7 +389,7 @@ const TrainingPage = () => {
               whileInView={{ opacity: 1, scale: 1 }}
               className="relative h-96 rounded-xl overflow-hidden bg-gradient-to-br from-accent/20 to-secondary/20 flex items-center justify-center"
             >
-              <span className="text-9xl">🥗</span>
+              <Target size={124} className="text-white/90" />
             </motion.div>
 
             <motion.div
@@ -391,7 +423,7 @@ const TrainingPage = () => {
                 ))}
               </div>
 
-              <Button variant="primary" size="lg">
+              <Button onClick={startProgramFlow} variant="primary" size="lg">
                 Start Your Nutrition Plan
               </Button>
             </motion.div>
@@ -428,7 +460,9 @@ const TrainingPage = () => {
                   <div className="h-full flex flex-col">
                     {/* Avatar */}
                     <div className="relative h-40 bg-gradient-to-br from-accent/30 to-secondary/30 rounded-t-lg flex items-center justify-center">
-                      <span className="text-6xl">{trainer.image}</span>
+                      <div className="flex h-20 w-20 items-center justify-center rounded-full border border-white/20 bg-dark-navy/55 text-2xl font-bold tracking-[0.08em] text-white">
+                        {trainer.avatar}
+                      </div>
                     </div>
 
                     {/* Content */}
@@ -450,7 +484,7 @@ const TrainingPage = () => {
                       </div>
 
                       {/* CTA */}
-                      <Button variant="primary" size="sm" className="w-full">
+                      <Button onClick={openTrainerBooking} variant="primary" size="sm" className="w-full">
                         Book Session
                       </Button>
                     </div>
@@ -479,14 +513,15 @@ const TrainingPage = () => {
               <Button onClick={() => navigate('/free-trial')} variant="primary" size="lg">
                 Start Free Trial
               </Button>
-              <Button variant="outline" size="lg">
+              <Button onClick={openConsultation} variant="outline" size="lg">
                 Schedule Consultation
               </Button>
             </div>
           </motion.div>
         </div>
       </section>
-    </motion.div>
+      </motion.div>
+    </>
   );
 };
 

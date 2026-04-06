@@ -3,18 +3,20 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { Swiper, SwiperSlide } from 'swiper/react';
 import { Navigation, Pagination, Autoplay } from 'swiper/modules';
-import { Star, MapPin, Heart, Users } from 'lucide-react';
+import { Star, MapPin, Heart, Users, Dumbbell, Activity, Zap, Flame, Sparkles, Award } from 'lucide-react';
 import Button from '../../components/ui/Button';
 import Card from '../../components/ui/Card';
 import Input from '../../components/ui/Input';
 import Badge from '../../components/ui/Badge';
 import Rating from '../../components/ui/Rating';
+import SEO from '../../components/seo/SEO';
 import 'swiper/css';
 import 'swiper/css/navigation';
 import 'swiper/css/pagination';
 
 const HomePage = () => {
   const navigate = useNavigate();
+  const appUrl = import.meta.env.VITE_APP_URL || 'http://localhost:5173';
   const [location, setLocation] = useState('');
   const [cycleIndex, setCycleIndex] = useState(0);
   const [counter, setCounter] = useState({ locations: 0, members: 0, classes: 0 });
@@ -60,12 +62,12 @@ const HomePage = () => {
   };
 
   const classes = [
-    { name: 'Strength', icon: '💪', color: 'from-accent' },
-    { name: 'Ride', icon: '🚴', color: 'from-secondary' },
-    { name: 'Mind Body', icon: '🧘', color: 'from-blue-600' },
-    { name: 'Dance', icon: '💃', color: 'from-pink-600' },
-    { name: 'Cardio', icon: '🏃', color: 'from-orange-600' },
-    { name: 'Specialty', icon: '⭐', color: 'from-purple-600' },
+    { name: 'Strength', icon: Dumbbell, color: 'from-accent' },
+    { name: 'Ride', icon: Activity, color: 'from-secondary' },
+    { name: 'Mind Body', icon: Heart, color: 'from-blue-600' },
+    { name: 'Dance', icon: Zap, color: 'from-pink-600' },
+    { name: 'Cardio', icon: Flame, color: 'from-orange-600' },
+    { name: 'Specialty', icon: Star, color: 'from-purple-600' },
   ];
 
   const testimonials = [
@@ -74,42 +76,42 @@ const HomePage = () => {
       location: 'New York',
       rating: 5,
       quote: 'Crunch changed my life! The no-judgments attitude is exactly what I needed.',
-      image: '👩‍🦰',
+      avatar: 'SM',
     },
     {
       name: 'James D.',
       location: 'Los Angeles',
       rating: 5,
       quote: 'Best gym membership ever. Great equipment and amazing trainers!',
-      image: '👨‍💼',
+      avatar: 'JD',
     },
     {
       name: 'Maria L.',
       location: 'Chicago',
       rating: 5,
       quote: 'The variety of classes is incredible. I never get bored with my workouts.',
-      image: '👩',
+      avatar: 'ML',
     },
     {
       name: 'Alex T.',
       location: 'Houston',
       rating: 5,
       quote: 'The community vibe is unmatched. Everyone is supportive and encouraging.',
-      image: '👨',
+      avatar: 'AT',
     },
     {
       name: 'Jessica P.',
       location: 'Miami',
       rating: 5,
       quote: 'Clean facilities, friendly staff, and flexible hours. Perfect for my schedule!',
-      image: '👩‍🦱',
+      avatar: 'JP',
     },
     {
       name: 'Marcus W.',
       location: 'Boston',
       rating: 5,
       quote: 'Personal trainers are top-notch. Saw results within weeks!',
-      image: '👨‍🦱',
+      avatar: 'MW',
     },
   ];
 
@@ -120,13 +122,19 @@ const HomePage = () => {
   ];
 
   const philosophyItems = [
-    { title: 'Positivity', description: 'We celebrate every win, big or small, in a judgment-free zone.' },
-    { title: 'Inclusivity', description: 'Every body is welcome here. Fitness looks different for everyone.' },
-    { title: 'Fun', description: 'Working out should feel good. Energy is for everyone.' },
+    { title: 'Positivity', description: 'We celebrate every win, big or small, in a judgment-free zone.', icon: Sparkles },
+    { title: 'Inclusivity', description: 'Every body is welcome here. Fitness looks different for everyone.', icon: Users },
+    { title: 'Fun', description: 'Working out should feel good. Energy is for everyone.', icon: Award },
   ];
 
   return (
-    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.5 }}>
+    <>
+      <SEO
+        title="Fitness Gym Membership & Classes"
+        description="Discover CrunchFit Pro memberships, classes, personal training, and gym locations to kickstart your fitness journey."
+        canonical={`${appUrl}/`}
+      />
+      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.5 }}>
       {/* HERO SECTION */}
       <section className="relative h-screen bg-gradient-to-b from-dark-navy via-dark-navy/95 to-dark-navy flex items-center justify-start overflow-hidden">
         {/* Background gradient overlay */}
@@ -318,11 +326,12 @@ const HomePage = () => {
                 transition={{ delay: idx * 0.1 }}
                 whileHover={{ y: -10 }}
                 className="group cursor-pointer"
+                onClick={() => navigate('/about')}
               >
                 <Card variant="dark-hover">
                   <div className="p-8 text-center h-full flex flex-col items-center justify-center">
-                    <div className="text-5xl mb-4">
-                      {idx === 0 ? '✨' : idx === 1 ? '🤝' : '🎉'}
+                    <div className="mb-4 rounded-2xl border border-accent/30 bg-accent/10 p-4">
+                      <item.icon size={36} className="text-accent" />
                     </div>
                     <h3 className="text-2xl font-bold text-white mb-3">{item.title}</h3>
                     <p className="text-light-bg/70 leading-relaxed">{item.description}</p>
@@ -355,7 +364,9 @@ const HomePage = () => {
               >
                 <div className="absolute inset-0 bg-dark-navy/40 group-hover:bg-dark-navy/20 transition-all duration-300 z-10" />
                 <div className="absolute inset-0 flex flex-col items-center justify-center z-20">
-                  <div className="text-6xl mb-2">{cls.icon}</div>
+                  <div className="mb-3 rounded-2xl border border-white/20 bg-dark-navy/60 p-4 backdrop-blur-sm">
+                    <cls.icon size={34} className="text-white" />
+                  </div>
                   <h3 className="text-2xl font-bold text-white">{cls.name}</h3>
                 </div>
               </motion.button>
@@ -383,7 +394,9 @@ const HomePage = () => {
               whileInView={{ opacity: 1, x: 0 }}
               className="relative h-96 rounded-xl overflow-hidden bg-gradient-to-br from-accent/30 to-secondary/30 flex items-center justify-center"
             >
-              <span className="text-8xl">👨‍🏫</span>
+              <div className="rounded-3xl border border-white/20 bg-dark-navy/55 p-8 backdrop-blur-sm">
+                <Users size={86} className="text-white" />
+              </div>
             </motion.div>
 
             <motion.div
@@ -435,7 +448,9 @@ const HomePage = () => {
                   <div className="p-8 h-full flex flex-col justify-between">
                     <div>
                       <div className="flex items-center gap-4 mb-4">
-                        <div className="text-5xl">{testimonial.image}</div>
+                        <div className="flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-br from-accent to-secondary text-sm font-bold tracking-[0.1em] text-white">
+                          {testimonial.avatar}
+                        </div>
                         <div>
                           <h4 className="text-white font-bold">{testimonial.name}</h4>
                           <p className="text-light-bg/60 text-sm">{testimonial.location}</p>
@@ -481,7 +496,7 @@ const HomePage = () => {
                         </li>
                       ))}
                     </ul>
-                    <Button variant="primary" size="md" className="w-full">
+                    <Button onClick={() => navigate('/membership')} variant="primary" size="md" className="w-full">
                       Learn More
                     </Button>
                   </div>
@@ -516,17 +531,18 @@ const HomePage = () => {
               Book classes, track workouts, and connect with the community on the go
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <Button variant="primary" size="lg">
+              <Button onClick={() => navigate('/crunch-plus')} variant="primary" size="lg">
                 App Store
               </Button>
-              <Button variant="secondary" size="lg">
+              <Button onClick={() => navigate('/crunch-plus')} variant="secondary" size="lg">
                 Google Play
               </Button>
             </div>
           </motion.div>
         </div>
       </section>
-    </motion.div>
+      </motion.div>
+    </>
   );
 };
 

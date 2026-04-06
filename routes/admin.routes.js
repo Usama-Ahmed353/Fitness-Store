@@ -11,7 +11,7 @@ const Payment = require('../models/Payment');
  */
 const checkAdmin = async (req, res, next) => {
   try {
-    const user = await User.findById(req.userId);
+    const user = await User.findById(req.user?.id);
     if (user && (user.role === 'admin' || user.role === 'super_admin')) {
       next();
     } else {
@@ -34,17 +34,23 @@ const checkAdmin = async (req, res, next) => {
  */
 router.get('/users', verifyToken, checkAdmin, async (req, res) => {
   try {
-    const { role, status, page = 1, limit = 20 } = req.query;
+    const { role, status, isActive, page = 1, limit = 20 } = req.query;
 
     let filter = {};
     if (role) filter.role = role;
-    if (status) filter.status = status;
+    if (typeof isActive !== 'undefined') {
+      filter.isActive = String(isActive) === 'true';
+    } else if (status) {
+      // Backward-compatible alias for old clients.
+      if (status === 'active') filter.isActive = true;
+      if (status === 'inactive') filter.isActive = false;
+    }
 
     const skip = (page - 1) * limit;
 
     const users = await User.find(filter)
       .select('-password -refreshToken')
-      .limit(limit)
+      .limit(Number(limit))
       .skip(skip)
       .sort({ createdAt: -1 });
 

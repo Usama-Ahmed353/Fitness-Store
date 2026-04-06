@@ -1,10 +1,9 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
-import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
-import L from 'leaflet';
+import { useNavigate } from 'react-router-dom';
 import {
   MapPin,
+  Users,
   Star,
   Phone,
   Mail,
@@ -12,26 +11,65 @@ import {
   Wifi,
   Droplet,
   Dumbbell,
+  Activity,
+  Flame,
   Heart,
-  ArrowRight,
   Navigation,
-  Search as SearchIcon,
-  ChevronDown,
 } from 'lucide-react';
 import Button from '../../components/ui/Button';
-import Card from '../../components/ui/Card';
-import Input from '../../components/ui/Input';
 import Badge from '../../components/ui/Badge';
 import Rating from '../../components/ui/Rating';
 import Modal from '../../components/ui/Modal';
+import SEO from '../../components/seo/SEO';
 
-// Fix leaflet marker icons
-delete L.Icon.Default.prototype._getIconUrl;
-L.Icon.Default.mergeOptions({
-  iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png',
-  iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png',
-  shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
-});
+const GOOGLE_MAPS_API_KEY =
+  import.meta.env.VITE_GOOGLE_MAPS_API_KEY || 'AIzaSyBmy-ceVB2K1ALGhV2vAHOjL8nIYSXVnwo';
+
+const DEFAULT_CENTER = { lat: 40.7413, lng: -73.9892 };
+const DEFAULT_ZOOM = 12;
+
+let googleMapsScriptPromise;
+
+const loadGoogleMapsScript = (apiKey) => {
+  if (typeof window === 'undefined') {
+    return Promise.reject(new Error('Google Maps requires a browser environment.'));
+  }
+
+  if (window.google?.maps) {
+    return Promise.resolve(window.google.maps);
+  }
+
+  if (googleMapsScriptPromise) {
+    return googleMapsScriptPromise;
+  }
+
+  googleMapsScriptPromise = new Promise((resolve, reject) => {
+    const existing = document.getElementById('google-maps-script');
+
+    if (existing) {
+      existing.addEventListener('load', () => resolve(window.google.maps));
+      existing.addEventListener('error', () => reject(new Error('Google Maps script failed to load.')));
+      return;
+    }
+
+    const script = document.createElement('script');
+    script.id = 'google-maps-script';
+    script.async = true;
+    script.defer = true;
+    script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}`;
+    script.onload = () => {
+      if (window.google?.maps) {
+        resolve(window.google.maps);
+      } else {
+        reject(new Error('Google Maps API loaded but maps object is unavailable.'));
+      }
+    };
+    script.onerror = () => reject(new Error('Unable to load Google Maps API.'));
+    document.head.appendChild(script);
+  });
+
+  return googleMapsScriptPromise;
+};
 
 // Mock gym data
 const mockGyms = [
@@ -43,7 +81,7 @@ const mockGyms = [
     email: 'timessquare@crunch.com',
     rating: 4.8,
     reviews: 256,
-    image: '🏋️',
+    image: 'TS',
     amenities: ['Pool', 'Sauna', 'Childcare', 'WiFi', 'Cardio'],
     hours: '5AM - 11PM',
     distance: 0.2,
@@ -63,7 +101,7 @@ const mockGyms = [
     email: 'eastvillage@crunch.com',
     rating: 4.7,
     reviews: 189,
-    image: '💪',
+    image: 'EV',
     amenities: ['Sauna', 'WiFi', 'Weights', 'Cardio', 'Studio'],
     hours: '6AM - 10PM',
     distance: 1.5,
@@ -82,7 +120,7 @@ const mockGyms = [
     email: 'midtown@crunch.com',
     rating: 4.9,
     reviews: 412,
-    image: '🏃',
+    image: 'MT',
     amenities: ['Pool', 'Childcare', 'WiFi', 'Lounge', 'Cafe'],
     hours: '24/7',
     distance: 2.8,
@@ -98,34 +136,42 @@ const mockGyms = [
 
 const amenityIcons = {
   'Pool': <Droplet size={18} />,
-  'Sauna': '🌡️',
-  'Childcare': '👶',
+  'Sauna': <Flame size={18} />,
+  'Childcare': <Users size={18} />,
   'WiFi': <Wifi size={18} />,
   'Weights': <Dumbbell size={18} />,
-  'Cardio': '🚴',
-  'Studio': '🎬',
-  'Lounge': '🛋️',
-  'Cafe': '☕',
+  'Cardio': <Activity size={18} />,
+  'Studio': <Star size={18} />,
+  'Lounge': <Heart size={18} />,
+  'Cafe': <Star size={18} />,
 };
 
 const LocationsPage = () => {
   const navigate = useNavigate();
-  const { slug } = useParams();
-  const [searchParams] = useSearchParams();
-  const mapRef = useRef(null);
+  const appUrl = import.meta.env.VITE_APP_URL || 'http://localhost:5173';
+  const mapContainerRef = useRef(null);
+  const googleMapRef = useRef(null);
+  const googleMarkersRef = useRef([]);
+  const infoWindowRef = useRef(null);
   const [userLocation, setUserLocation] = useState(null);
   const [gyms, setGyms] = useState(mockGyms);
   const [filteredGyms, setFilteredGyms] = useState(mockGyms);
   const [selectedGym, setSelectedGym] = useState(null);
   const [detailModal, setDetailModal] = useState(false);
-  const [searchQuery, setSearchQuery] = useState(searchParams.get('search') || '');
   const [geoError, setGeoError] = useState('');
+  const [mapError, setMapError] = useState('');
+  const [mapReady, setMapReady] = useState(false);
   const [filters, setFilters] = useState({
     state: '',
     openNow: false,
     amenities: [],
     sort: 'distance',
   });
+
+  const openDirections = (address) => {
+    const query = encodeURIComponent(address);
+    window.open(`https://www.google.com/maps/search/?api=1&query=${query}`, '_blank', 'noopener,noreferrer');
+  };
 
   // Geolocation
   const handleGeolocation = () => {
@@ -156,13 +202,6 @@ const LocationsPage = () => {
   useEffect(() => {
     let filtered = [...gyms];
 
-    if (searchQuery) {
-      filtered = filtered.filter((gym) =>
-        gym.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        gym.address.toLowerCase().includes(searchQuery.toLowerCase())
-      );
-    }
-
     if (filters.openNow) {
       filtered = filtered.filter((gym) => gym.hours === '24/7');
     }
@@ -181,7 +220,151 @@ const LocationsPage = () => {
     }
 
     setFilteredGyms(filtered);
-  }, [searchQuery, filters, gyms]);
+  }, [filters, gyms]);
+
+  const clearGoogleMapMarkers = useCallback(() => {
+    googleMarkersRef.current.forEach((marker) => marker.setMap(null));
+    googleMarkersRef.current = [];
+  }, []);
+
+  const renderGoogleMapMarkers = useCallback(() => {
+    if (!mapReady || !googleMapRef.current || !window.google?.maps) return;
+
+    clearGoogleMapMarkers();
+    const bounds = new window.google.maps.LatLngBounds();
+
+    filteredGyms.forEach((gym) => {
+      const marker = new window.google.maps.Marker({
+        position: { lat: gym.lat, lng: gym.lng },
+        map: googleMapRef.current,
+        title: gym.name,
+        animation: window.google.maps.Animation.DROP,
+      });
+
+      marker.addListener('click', () => {
+        setSelectedGym(gym);
+        setDetailModal(true);
+
+        if (!infoWindowRef.current) {
+          infoWindowRef.current = new window.google.maps.InfoWindow();
+        }
+
+        infoWindowRef.current.setContent(
+          `<div style="font-family:Segoe UI, Arial,sans-serif;max-width:190px;">
+             <div style="font-weight:700;margin-bottom:4px;">${gym.name}</div>
+             <div style="font-size:12px;color:#4b5563;margin-bottom:6px;">${gym.address}</div>
+             <div style="font-size:12px;color:#0ea5e9;">${gym.distance} miles away</div>
+           </div>`
+        );
+        infoWindowRef.current.open(googleMapRef.current, marker);
+      });
+
+      googleMarkersRef.current.push(marker);
+      bounds.extend(marker.getPosition());
+    });
+
+    if (userLocation) {
+      const userMarker = new window.google.maps.Marker({
+        position: { lat: userLocation.lat, lng: userLocation.lng },
+        map: googleMapRef.current,
+        title: 'Your Location',
+        icon: {
+          path: window.google.maps.SymbolPath.CIRCLE,
+          fillColor: '#0ea5e9',
+          fillOpacity: 1,
+          strokeColor: '#ffffff',
+          strokeWeight: 2,
+          scale: 8,
+        },
+      });
+
+      googleMarkersRef.current.push(userMarker);
+      bounds.extend(userMarker.getPosition());
+    }
+
+    if (!bounds.isEmpty()) {
+      googleMapRef.current.fitBounds(bounds, 80);
+      const listener = window.google.maps.event.addListenerOnce(
+        googleMapRef.current,
+        'bounds_changed',
+        () => {
+          if (googleMapRef.current.getZoom() > 14) {
+            googleMapRef.current.setZoom(14);
+          }
+        }
+      );
+      return () => window.google.maps.event.removeListener(listener);
+    }
+
+    googleMapRef.current.setCenter(DEFAULT_CENTER);
+    googleMapRef.current.setZoom(DEFAULT_ZOOM);
+  }, [clearGoogleMapMarkers, filteredGyms, mapReady, userLocation]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const initializeMap = async () => {
+      try {
+        setMapError('');
+        const maps = await loadGoogleMapsScript(GOOGLE_MAPS_API_KEY);
+        if (cancelled || !mapContainerRef.current) return;
+
+        googleMapRef.current = new maps.Map(mapContainerRef.current, {
+          center: DEFAULT_CENTER,
+          zoom: DEFAULT_ZOOM,
+          mapTypeControl: false,
+          streetViewControl: false,
+          fullscreenControl: true,
+          zoomControl: true,
+          styles: [
+            { elementType: 'geometry', stylers: [{ color: '#0f172a' }] },
+            { elementType: 'labels.text.stroke', stylers: [{ color: '#0f172a' }] },
+            { elementType: 'labels.text.fill', stylers: [{ color: '#94a3b8' }] },
+            { featureType: 'road', elementType: 'geometry', stylers: [{ color: '#1e293b' }] },
+            { featureType: 'water', elementType: 'geometry', stylers: [{ color: '#0b3b54' }] },
+            { featureType: 'poi', stylers: [{ visibility: 'off' }] },
+          ],
+        });
+
+        setMapReady(true);
+      } catch (err) {
+        if (!cancelled) {
+          setMapError('Google Maps failed to load. Please verify your API key and billing settings.');
+        }
+      }
+    };
+
+    initializeMap();
+
+    return () => {
+      cancelled = true;
+      clearGoogleMapMarkers();
+    };
+  }, [clearGoogleMapMarkers]);
+
+  useEffect(() => {
+    renderGoogleMapMarkers();
+  }, [renderGoogleMapMarkers]);
+
+  useEffect(() => {
+    if (!selectedGym || !googleMapRef.current || !window.google?.maps) return;
+
+    const target = { lat: selectedGym.lat, lng: selectedGym.lng };
+    googleMapRef.current.panTo(target);
+    googleMapRef.current.setZoom(14);
+  }, [selectedGym]);
+
+  useEffect(() => {
+    if (!mapReady || !window.google?.maps || !googleMapRef.current || !mapContainerRef.current) return;
+
+    const observer = new ResizeObserver(() => {
+      window.google.maps.event.trigger(googleMapRef.current, 'resize');
+      renderGoogleMapMarkers();
+    });
+
+    observer.observe(mapContainerRef.current);
+    return () => observer.disconnect();
+  }, [mapReady, renderGoogleMapMarkers]);
 
   const handleSelectGym = (gym) => {
     setSelectedGym(gym);
@@ -201,7 +384,7 @@ const LocationsPage = () => {
         <div className="space-y-6">
           {/* Header */}
           <div className="relative h-48 bg-gradient-to-br from-accent/30 to-secondary/30 rounded-lg flex items-center justify-center">
-            <span className="text-8xl">{selectedGym.image}</span>
+            <span className="text-4xl font-bold tracking-[0.15em] text-white">{selectedGym.image}</span>
           </div>
 
           {/* Rating */}
@@ -264,10 +447,23 @@ const LocationsPage = () => {
 
           {/* CTAs */}
           <div className="flex gap-3 pt-6 border-t border-light-bg/10">
-            <Button variant="primary" size="md" className="flex-1">
+            <Button
+              variant="primary"
+              size="md"
+              className="flex-1"
+              onClick={() => {
+                navigate('/join');
+                setDetailModal(false);
+              }}
+            >
               Join This Club
             </Button>
-            <Button variant="outline" size="md" className="flex-1">
+            <Button
+              variant="outline"
+              size="md"
+              className="flex-1"
+              onClick={() => openDirections(selectedGym.address)}
+            >
               View Club Page
             </Button>
           </div>
@@ -277,7 +473,13 @@ const LocationsPage = () => {
   };
 
   return (
-    <motion.div
+    <>
+      <SEO
+        title="Find a Gym Near You"
+        description="Locate CrunchFit Pro gyms, view amenities, class highlights, and get directions on an interactive map."
+        canonical={`${appUrl}/locations`}
+      />
+      <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       transition={{ duration: 0.5 }}
@@ -297,21 +499,13 @@ const LocationsPage = () => {
             <p className="text-light-bg/70">Over 400 locations across the US</p>
           </motion.div>
 
-          {/* Search Bar */}
+          {/* Header Actions */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.1 }}
-            className="flex flex-col sm:flex-row gap-3"
+            className="flex items-center justify-center"
           >
-            <div className="flex-1">
-              <Input
-                placeholder="Search by gym name or city..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                icon={<SearchIcon size={18} />}
-              />
-            </div>
             <Button
               onClick={handleGeolocation}
               variant="secondary"
@@ -387,8 +581,8 @@ const LocationsPage = () => {
                   onChange={(e) => setFilters({ ...filters, sort: e.target.value })}
                   className="w-full px-3 py-2 bg-dark-navy/50 border border-accent/30 text-light-bg rounded-lg focus:outline-none focus:border-accent"
                 >
-                  <option value="distance">Distance</option>
-                  <option value="rating">Highest Rating</option>
+                  <option value="distance" className="bg-white text-gray-900">Distance</option>
+                  <option value="rating" className="bg-white text-gray-900">Highest Rating</option>
                 </select>
               </div>
             </div>
@@ -415,7 +609,7 @@ const LocationsPage = () => {
                       }`}
                     >
                       <div className="flex items-start gap-3">
-                        <span className="text-2xl">{gym.image}</span>
+                        <span className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-accent to-secondary text-xs font-bold tracking-[0.12em] text-white">{gym.image}</span>
                         <div className="flex-1">
                           <h4 className="font-bold text-white">{gym.name}</h4>
                           <div className="flex items-center gap-1 mt-1">
@@ -437,63 +631,35 @@ const LocationsPage = () => {
         <motion.div
           initial={{ opacity: 0, x: 40 }}
           animate={{ opacity: 1, x: 0 }}
-          className="flex-1 h-screen lg:h-auto"
+          className="flex-1 h-[500px] lg:min-h-[calc(100vh-180px)]"
         >
-          <MapContainer
-            center={userLocation || [40.7128, -74.006]}
-            zoom={13}
-            className="w-full h-full"
-            ref={mapRef}
-          >
-            <TileLayer
-              url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-              attribution='&copy; OpenStreetMap contributors'
+          {mapError ? (
+            <div className="w-full h-full flex items-center justify-center bg-dark-navy/70 border-l border-accent/20 px-6">
+              <div className="text-center max-w-lg">
+                <p className="text-red-300 font-semibold mb-2">Map could not be loaded</p>
+                <p className="text-light-bg/70 text-sm mb-4">{mapError}</p>
+                <Button
+                  variant="secondary"
+                  size="md"
+                  onClick={() => window.location.reload()}
+                >
+                  Retry Map
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <div
+              ref={mapContainerRef}
+              className="w-full h-full border-l border-accent/20"
             />
-            {filteredGyms.map((gym) => (
-              <Marker
-                key={gym.id}
-                position={[gym.lat, gym.lng]}
-                eventHandlers={{
-                  click: () => handleSelectGym(gym),
-                }}
-              >
-                <Popup>
-                  <div className="text-center">
-                    <p className="font-bold">{gym.name}</p>
-                    <Rating value={gym.rating} readonly size="sm" className="justify-center" />
-                    <button
-                      onClick={() => handleSelectGym(gym)}
-                      className="mt-2 px-3 py-1 bg-accent text-white rounded text-sm"
-                    >
-                      View Details
-                    </button>
-                  </div>
-                </Popup>
-              </Marker>
-            ))}
-            {userLocation && (
-              <Marker
-                position={[userLocation.lat, userLocation.lng]}
-                icon={L.icon({
-                  iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-blue.png',
-                  shadowUrl:
-                    'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
-                  iconSize: [25, 41],
-                  iconAnchor: [12, 41],
-                  popupAnchor: [1, -34],
-                  shadowSize: [41, 41],
-                })}
-              >
-                <Popup>Your Location</Popup>
-              </Marker>
-            )}
-          </MapContainer>
+          )}
         </motion.div>
       </div>
 
       {/* Gym Detail Modal */}
       <GymDetailModal />
-    </motion.div>
+      </motion.div>
+    </>
   );
 };
 

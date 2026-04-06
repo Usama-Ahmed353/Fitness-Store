@@ -87,14 +87,13 @@ const gymSchema = new mongoose.Schema(
 );
 
 // Auto-generate slug from name
-gymSchema.pre('save', function (next) {
+gymSchema.pre('save', function () {
   if (this.isModified('name')) {
     this.slug = this.name
       .toLowerCase()
       .replace(/\s+/g, '-')
       .replace(/[^\w-]/g, '');
   }
-  next();
 });
 
 // Create geospatial index for geo queries

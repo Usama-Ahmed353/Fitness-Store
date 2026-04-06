@@ -1,5 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import axios from 'axios';
+import { useSelector } from 'react-redux';
+import { useNavigate } from 'react-router-dom';
 import {
   User,
   Bell,
@@ -8,7 +11,9 @@ import {
   DollarSign,
   AlertCircle,
   Save,
-  X
+  ShieldCheck,
+  Sparkles,
+  ArrowLeft,
 } from 'lucide-react';
 import { useTheme } from '../../../context/ThemeContext';
 import { useLanguage } from '../../../context/LanguageContext';
@@ -19,59 +24,143 @@ import PreferencesSettings from './PreferencesSettings';
 import BillingSettings from './BillingSettings';
 
 const SettingsPage = () => {
+  const navigate = useNavigate();
+  const runtimeHost = typeof window !== 'undefined' ? window.location.hostname : 'localhost';
+  const API = import.meta.env.VITE_API_BASE_URL || `http://${runtimeHost}:5001/api`;
   const { isDark } = useTheme();
   const { t } = useLanguage();
+  const { accessToken, user } = useSelector((s) => s.auth);
 
   const [activeTab, setActiveTab] = useState('profile');
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [showUnsavedModal, setShowUnsavedModal] = useState(false);
   const [pendingTab, setPendingTab] = useState(null);
 
-  // Mock user data - Replace with actual user data from context/API
-  const currentUser = {
-    id: '123',
-    firstName: 'John',
-    lastName: 'Doe',
-    email: 'john@example.com',
-    phone: '(555) 123-4567',
-    dateOfBirth: '1990-05-15',
-    profilePhoto: null,
-    avatar: '👤',
-    emergencyContact: {
-      name: 'Jane Doe',
-      phone: '(555) 987-6543',
-      relationship: 'Spouse'
-    },
-    medicalNotes: '',
-    fitnessGoals: 'Build muscle and improve cardio',
+  const [currentUser, setCurrentUser] = useState({
+    id: user?.id || '',
+    firstName: user?.firstName || '',
+    lastName: user?.lastName || '',
+    email: user?.email || '',
+    phone: user?.phone || '',
+    profilePhoto: user?.profilePhoto || null,
     notificationPreferences: {
       email: {
         classReminders: true,
         promotions: false,
         newsletter: true,
         accountUpdates: true,
-        trainerMessages: true
+        trainerMessages: true,
       },
       sms: {
         classReminders: true,
         paymentReminders: true,
-        emergencyAlerts: true
+        emergencyAlerts: true,
       },
       inApp: {
         classReminders: true,
         messages: true,
         promotions: false,
-        systemAlerts: true
-      }
+        systemAlerts: true,
+      },
     },
-    twoFactorEnabled: false,
     privacyLevel: 'friends',
     showProfilePublicly: true,
     allowMessages: true,
     subscribeNewsletter: true,
     subscription: {
       plan: 'premium',
-      status: 'active'
+      status: 'active',
+    },
+  });
+
+  useEffect(() => {
+    if (!accessToken) return;
+
+    const headers = { Authorization: `Bearer ${accessToken}` };
+    const loadMe = async () => {
+      try {
+        const { data } = await axios.get(`${API}/auth/me`, { headers });
+        const me = data?.user;
+        if (!me) return;
+
+        setCurrentUser((prev) => ({
+          ...prev,
+          id: me._id || me.id,
+          firstName: me.firstName || prev.firstName,
+          lastName: me.lastName || prev.lastName,
+          email: me.email || prev.email,
+          phone: me.phone || prev.phone,
+          profilePhoto: me.profilePhoto || prev.profilePhoto,
+          notificationPreferences: {
+            ...prev.notificationPreferences,
+            ...(me.notificationSettings || {}),
+          },
+          privacyLevel: me.privacy?.profileVisibility === 'public'
+            ? 'public'
+            : me.privacy?.profileVisibility === 'private'
+            ? 'private'
+            : 'friends',
+          allowMessages: typeof me.privacy?.allowMessages === 'boolean'
+            ? me.privacy.allowMessages
+            : prev.allowMessages,
+        }));
+      } catch {
+        // Keep auth-store fallback values.
+      }
+    };
+
+    loadMe();
+  }, [API, accessToken]);
+
+  const handleUpdate = async (payload = {}) => {
+    if (!accessToken) return;
+    const headers = { Authorization: `Bearer ${accessToken}` };
+
+    const body = {
+      firstName: payload.firstName,
+      lastName: payload.lastName,
+      phone: payload.phone,
+      notificationSettings: payload.notificationPreferences,
+      preferences: {
+        theme: payload.theme,
+        language: payload.language,
+      },
+      privacy: {
+        profileVisibility: payload.privacyLevel === 'friends' ? 'members' : payload.privacyLevel,
+        allowMessages: payload.allowMessages,
+      },
+    };
+
+    const cleaned = Object.fromEntries(
+      Object.entries(body).filter(([, value]) => typeof value !== 'undefined')
+    );
+
+    try {
+      const { data } = await axios.patch(`${API}/auth/me`, cleaned, { headers });
+      if (data?.user) {
+        const me = data.user;
+        setCurrentUser((prev) => ({
+          ...prev,
+          id: me._id || me.id,
+          firstName: me.firstName || prev.firstName,
+          lastName: me.lastName || prev.lastName,
+          email: me.email || prev.email,
+          phone: me.phone || prev.phone,
+          profilePhoto: me.profilePhoto || prev.profilePhoto,
+          notificationPreferences: {
+            ...prev.notificationPreferences,
+            ...(me.notificationSettings || {}),
+          },
+          privacyLevel: me.privacy?.profileVisibility === 'members'
+            ? 'friends'
+            : me.privacy?.profileVisibility || prev.privacyLevel,
+          allowMessages: typeof me.privacy?.allowMessages === 'boolean'
+            ? me.privacy.allowMessages
+            : prev.allowMessages,
+        }));
+      }
+    } catch {
+      // Child components still show local success/error states.
     }
   };
 
@@ -114,7 +203,7 @@ const SettingsPage = () => {
             userId={currentUser.id}
             currentUser={currentUser}
             onUnsavedChanges={setHasUnsavedChanges}
-            onUpdate={() => {}}
+            onUpdate={handleUpdate}
           />
         );
       case 'notifications':
@@ -123,7 +212,7 @@ const SettingsPage = () => {
             userId={currentUser.id}
             currentUser={currentUser}
             onUnsavedChanges={setHasUnsavedChanges}
-            onUpdate={() => {}}
+            onUpdate={handleUpdate}
           />
         );
       case 'security':
@@ -132,7 +221,7 @@ const SettingsPage = () => {
             userId={currentUser.id}
             currentUser={currentUser}
             onUnsavedChanges={setHasUnsavedChanges}
-            onUpdate={() => {}}
+            onUpdate={handleUpdate}
           />
         );
       case 'preferences':
@@ -141,7 +230,7 @@ const SettingsPage = () => {
             userId={currentUser.id}
             currentUser={currentUser}
             onUnsavedChanges={setHasUnsavedChanges}
-            onUpdate={() => {}}
+            onUpdate={handleUpdate}
           />
         );
       case 'billing':
@@ -150,7 +239,7 @@ const SettingsPage = () => {
             userId={currentUser.id}
             currentUser={currentUser}
             onUnsavedChanges={setHasUnsavedChanges}
-            onUpdate={() => {}}
+            onUpdate={handleUpdate}
           />
         );
       default:
@@ -224,14 +313,38 @@ const SettingsPage = () => {
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
         className={`sticky top-0 z-40 border-b ${
-          isDark ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'
+          isDark ? 'bg-gray-800/95 border-gray-700 backdrop-blur' : 'bg-white/95 border-gray-200 backdrop-blur'
         }`}
       >
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-          <div className="flex items-center justify-between">
-            <h1 className={`text-3xl font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>
-              {t('settings.settings') || 'Settings'}
-            </h1>
+          <div className="flex items-center justify-between gap-4">
+            <div>
+              <button
+                type="button"
+                onClick={() => navigate(-1)}
+                className={`mb-4 inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm font-medium transition ${
+                  isDark
+                    ? 'border-gray-600 bg-gray-800/70 text-gray-200 hover:bg-gray-700'
+                    : 'border-gray-200 bg-white text-gray-700 hover:bg-gray-50'
+                }`}
+              >
+                <ArrowLeft className="h-4 w-4" /> Back
+              </button>
+              <h1 className={`text-3xl font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>
+                {t('settings.settings') || 'Settings'}
+              </h1>
+              <p className={`mt-1 text-sm ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
+                Manage privacy, profile and notification preferences in one secure place.
+              </p>
+              <div className="mt-2 flex flex-wrap items-center gap-2 text-xs font-semibold">
+                <span className={`inline-flex items-center gap-1 rounded-full px-3 py-1 ${isDark ? 'bg-gray-700 text-gray-200' : 'border border-gray-200 bg-gray-50 text-gray-700'}`}>
+                  <ShieldCheck size={12} className="text-emerald-500" /> Secure updates
+                </span>
+                <span className={`inline-flex items-center gap-1 rounded-full px-3 py-1 ${isDark ? 'bg-gray-700 text-gray-200' : 'border border-gray-200 bg-gray-50 text-gray-700'}`}>
+                  <Sparkles size={12} className="text-orange-500" /> Live sync enabled
+                </span>
+              </div>
+            </div>
 
             {hasUnsavedChanges && (
               <motion.div
@@ -255,8 +368,8 @@ const SettingsPage = () => {
           <motion.div
             initial={{ opacity: 0, x: -20 }}
             animate={{ opacity: 1, x: 0 }}
-            className={`lg:sticky lg:top-24 h-fit rounded-lg border ${
-              isDark ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'
+            className={`lg:sticky lg:top-24 h-fit rounded-xl border ${
+              isDark ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200 shadow-sm'
             } p-2`}
           >
             <nav className="space-y-1">
@@ -272,8 +385,8 @@ const SettingsPage = () => {
                     className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all ${
                       isActive
                         ? isDark
-                          ? 'bg-orange-500/20 text-orange-400 border border-orange-500/30'
-                          : 'bg-orange-50 text-orange-600 border border-orange-200'
+                          ? 'bg-orange-500/20 text-orange-400 border border-orange-500/30 shadow-sm'
+                          : 'bg-orange-50 text-orange-600 border border-orange-200 shadow-sm'
                         : isDark
                         ? 'text-gray-300 hover:bg-gray-700/50'
                         : 'text-gray-700 hover:bg-gray-50'

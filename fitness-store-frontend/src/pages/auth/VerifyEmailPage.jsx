@@ -1,7 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useSearchParams, useNavigate, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { CheckCircle, AlertCircle, Mail } from 'lucide-react';
+import axios from 'axios';
 import Button from '../../components/ui/Button';
 import Card from '../../components/ui/Card';
 import toast from 'react-hot-toast';
@@ -9,24 +10,35 @@ import toast from 'react-hot-toast';
 const VerifyEmailPage = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
-  const [status, setStatus] = useState('verifying'); // verifying, success, error
+  const [status, setStatus] = useState('awaiting'); // awaiting, verifying, success, error
   const [error, setError] = useState(null);
+  const hasAttemptedVerification = useRef(false);
 
   const token = searchParams.get('token');
+  const email = searchParams.get('email');
+  const runtimeHost =
+    typeof window !== 'undefined' ? window.location.hostname : 'localhost';
+  const API_BASE_URL =
+    import.meta.env.VITE_API_BASE_URL || `http://${runtimeHost}:5001/api`;
 
   useEffect(() => {
     const verifyEmail = async () => {
       if (!token) {
-        setStatus('error');
-        setError('No verification token provided');
+        setStatus('awaiting');
         return;
       }
 
+      if (hasAttemptedVerification.current) {
+        return;
+      }
+      hasAttemptedVerification.current = true;
+
       try {
-        // Simulate API call
-        await new Promise(resolve => setTimeout(resolve, 2000));
-        
-        // Simulate success
+        setStatus('verifying');
+        await axios.get(`${API_BASE_URL}/auth/verify-email`, {
+          params: { token },
+        });
+
         setStatus('success');
         toast.success('Email verified successfully!');
         
@@ -34,13 +46,13 @@ const VerifyEmailPage = () => {
         setTimeout(() => navigate('/login'), 3000);
       } catch (err) {
         setStatus('error');
-        setError(err.message || 'Failed to verify email');
+        setError(err.response?.data?.message || err.message || 'Failed to verify email');
         toast.error('Email verification failed');
       }
     };
 
     verifyEmail();
-  }, [token, navigate]);
+  }, [token, navigate, API_BASE_URL]);
 
   return (
     <motion.div
@@ -70,8 +82,36 @@ const VerifyEmailPage = () => {
             {/* Header */}
             <div className="mb-8">
               <h1 className="text-3xl font-bold text-accent mb-2">Crunch</h1>
-              <p className="text-light-bg/70">Email Verification</p>
+              <p className="text-slate-600">Email Verification</p>
             </div>
+
+            {/* Awaiting Token State */}
+            {status === 'awaiting' && (
+              <motion.div
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+              >
+                <div className="flex justify-center mb-6">
+                  <div className="p-4 rounded-full bg-accent/20">
+                    <Mail size={48} className="text-accent" />
+                  </div>
+                </div>
+                <h2 className="text-xl font-bold text-slate-900 mb-2">
+                  Verify From Your Email
+                </h2>
+                <p className="text-slate-600 mb-6">
+                  We sent a verification link to {email || 'your email address'}. Open that link to verify your account.
+                </p>
+                <Button
+                  onClick={() => navigate('/login')}
+                  variant="outline"
+                  size="lg"
+                  className="w-full"
+                >
+                  Back to Sign In
+                </Button>
+              </motion.div>
+            )}
 
             {/* Verifying State */}
             {status === 'verifying' && (
@@ -84,10 +124,10 @@ const VerifyEmailPage = () => {
                     <Mail size={48} className="text-accent animate-pulse" />
                   </div>
                 </div>
-                <h2 className="text-xl font-bold text-white mb-2">
+                <h2 className="text-xl font-bold text-slate-900 mb-2">
                   Verifying Your Email
                 </h2>
-                <p className="text-light-bg/70">
+                <p className="text-slate-600">
                   Please wait while we verify your email address...
                 </p>
                 <div className="mt-6 flex justify-center gap-2">
@@ -115,10 +155,10 @@ const VerifyEmailPage = () => {
                   </motion.div>
                 </div>
 
-                <h2 className="text-xl font-bold text-white mb-2">
+                <h2 className="text-xl font-bold text-slate-900 mb-2">
                   Email Verified!
                 </h2>
-                <p className="text-light-bg/70 mb-6">
+                <p className="text-slate-600 mb-6">
                   Your email address has been verified successfully. Redirecting to sign in...
                 </p>
 
@@ -145,10 +185,10 @@ const VerifyEmailPage = () => {
                   </div>
                 </div>
 
-                <h2 className="text-xl font-bold text-white mb-2">
+                <h2 className="text-xl font-bold text-slate-900 mb-2">
                   Verification Failed
                 </h2>
-                <p className="text-light-bg/70 mb-6">
+                <p className="text-slate-600 mb-6">
                   {error || 'We couldn\'t verify your email. Please try again or contact support.'}
                 </p>
 
@@ -171,7 +211,7 @@ const VerifyEmailPage = () => {
                   </Button>
                 </div>
 
-                <p className="text-light-bg/70 text-sm mt-6">
+                <p className="text-slate-600 text-sm mt-6">
                   <Link to="/contact" className="text-accent hover:underline">
                     Contact Support
                   </Link>

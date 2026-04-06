@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
+import { useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -8,6 +9,7 @@ import { Disclosure } from '@headlessui/react';
 import Button from '../../components/ui/Button';
 import Input from '../../components/ui/Input';
 import Card from '../../components/ui/Card';
+import SEO from '../../components/seo/SEO';
 import toast from 'react-hot-toast';
 
 const contactSchema = z.object({
@@ -18,7 +20,14 @@ const contactSchema = z.object({
 });
 
 const ContactPage = () => {
+  const navigate = useNavigate();
+  const appUrl = import.meta.env.VITE_APP_URL || 'http://localhost:5173';
   const [submitted, setSubmitted] = useState(false);
+
+  const openDirections = (address) => {
+    const query = encodeURIComponent(address);
+    window.open(`https://www.google.com/maps/search/?api=1&query=${query}`, '_blank', 'noopener,noreferrer');
+  };
 
   const {
     register,
@@ -156,7 +165,13 @@ const ContactPage = () => {
   };
 
   return (
-    <motion.div
+    <>
+      <SEO
+        title="Contact CrunchFit Pro"
+        description="Get in touch with CrunchFit Pro support, gym locations, hours, and membership assistance."
+        canonical={`${appUrl}/contact`}
+      />
+      <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       transition={{ duration: 0.5 }}
@@ -386,7 +401,7 @@ const ContactPage = () => {
                           </div>
                         </div>
 
-                        <Button variant="outline" size="sm" className="w-full">
+                        <Button onClick={() => openDirections(gym.address)} variant="outline" size="sm" className="w-full">
                           Get Directions
                         </Button>
                       </div>
@@ -460,13 +475,14 @@ const ContactPage = () => {
             <p className="text-light-bg/80 text-lg mb-8">
               Our team is here to help. Reach out anytime.
             </p>
-            <Button variant="primary" size="lg">
+            <Button onClick={() => navigate('/free-trial')} variant="primary" size="lg">
               Start Your Free Trial
             </Button>
           </motion.div>
         </div>
       </section>
-    </motion.div>
+      </motion.div>
+    </>
   );
 };
 

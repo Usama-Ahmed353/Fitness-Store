@@ -20,21 +20,21 @@ export const Button = ({
 }) => {
   // Size classes
   const sizeClasses = {
-    sm: 'px-3 py-1.5 text-small',
-    md: 'px-4 py-2 text-body',
-    lg: 'px-6 py-3 text-body',
+    sm: 'px-3.5 py-2 text-small',
+    md: 'px-5 py-2.5 text-body',
+    lg: 'px-7 py-3.5 text-body',
   };
 
   // Variant classes
   const variantClasses = {
     primary:
-      'bg-gradient-to-r from-primary to-primary-dark text-white hover:shadow-lg',
+      'bg-gradient-to-r from-primary to-primary-dark text-white shadow-sm hover:shadow-xl hover:shadow-primary/30',
     secondary:
-      'bg-gradient-to-r from-secondary to-secondary-dark text-white hover:shadow-lg',
+      'bg-gradient-to-r from-secondary to-secondary-dark text-white shadow-sm hover:shadow-xl hover:shadow-secondary/25',
     outline:
-      'border-2 border-primary text-primary hover:bg-primary/5 bg-transparent',
+      'border border-primary/40 text-primary hover:bg-primary/10 hover:border-primary/70 bg-transparent',
     ghost: 'text-primary hover:bg-primary/10 bg-transparent',
-    danger: 'bg-red-500 text-white hover:bg-red-600',
+    danger: 'bg-red-500 text-white shadow-sm hover:bg-red-600 hover:shadow-xl hover:shadow-red-500/25',
   };
 
   const isDisabledOrLoading = disabled || isLoading;
@@ -46,8 +46,9 @@ export const Button = ({
       disabled={isDisabledOrLoading}
       className={`
         inline-flex items-center justify-center gap-2
-        rounded-lg font-medium transition-all duration-200
-        disabled:opacity-50 disabled:cursor-not-allowed
+        rounded-xl font-semibold tracking-[0.01em] transition-all duration-200
+        disabled:opacity-55 disabled:cursor-not-allowed
+        focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/35 focus-visible:ring-offset-2 focus-visible:ring-offset-transparent
         ${sizeClasses[size]}
         ${variantClasses[variant]}
         ${fullWidth ? 'w-full' : ''}

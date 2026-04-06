@@ -12,22 +12,25 @@ const Navbar = () => {
   const [isScrolled, setIsScrolled] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
-  
-  // Theme and Language hooks
+
   const { isDark, toggleTheme } = useTheme();
   const { t } = useLanguage();
 
   const { items: cartItems } = useSelector((state) => state.cart || { items: [] });
   const cartCount = cartItems?.length || 0;
 
-  // Scroll detection
   useEffect(() => {
     const handleScroll = () => {
-      setIsScrolled(window.scrollY > 10);
+      setIsScrolled(window.scrollY > 8);
     };
-    window.addEventListener('scroll', handleScroll);
+
+    window.addEventListener('scroll', handleScroll, { passive: true });
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
+
+  useEffect(() => {
+    setIsOpen(false);
+  }, [location.pathname]);
 
   const navLinks = [
     { key: 'shop', i18nKey: 'navbar.shop' },
@@ -45,294 +48,216 @@ const Navbar = () => {
     'crunch-plus': '/crunch-plus',
   };
 
-  const toggleMobileMenu = () => {
-    setIsOpen(!isOpen);
+  const containerClass = isDark
+    ? isScrolled
+      ? 'bg-slate-950/92 border-b border-slate-700/70 shadow-xl shadow-black/30 backdrop-blur-xl'
+      : 'bg-slate-900/78 border-b border-slate-700/45 backdrop-blur-md'
+    : isScrolled
+    ? 'bg-white/92 border-b border-slate-200/80 shadow-xl shadow-slate-900/8 backdrop-blur-xl'
+    : 'bg-white/74 border-b border-slate-200/50 backdrop-blur-md';
+
+  const getNavItemClass = (active) => {
+    if (active) {
+      return 'text-accent';
+    }
+    return isDark ? 'text-slate-300 hover:text-white' : 'text-slate-700 hover:text-slate-900';
   };
 
   const handleNavClick = (path) => {
     navigate(path);
-    setIsOpen(false);
-  };
-
-  const handleLogin = () => {
-    navigate('/login');
-    setIsOpen(false);
-  };
-
-  const handleFreeTrial = () => {
-    navigate('/free-trial');
-    setIsOpen(false);
-  };
-
-  const isActive = (key) => {
-    const path = paths[key];
-    return location.pathname === path;
   };
 
   return (
     <>
-      {/* Navbar */}
       <motion.nav
-        initial={{ y: -100 }}
-        animate={{ y: 0 }}
-        transition={{ duration: 0.5 }}
-        className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
-          isScrolled
-            ? isDark
-              ? 'bg-gray-900/95 backdrop-blur-md shadow-lg border-b border-gray-800/50'
-              : 'bg-white/95 backdrop-blur-md shadow-lg border-b border-gray-200/50'
-            : isDark
-            ? 'bg-gray-900/80 backdrop-blur-sm'
-            : 'bg-white/80 backdrop-blur-sm'
-        }`}
+        initial={{ y: -80, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        transition={{ duration: 0.4 }}
+        className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${containerClass}`}
       >
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-20">
-            {/* Logo */}
-            <Link
-              to="/"
-              className="flex-shrink-0 group"
-              onClick={() => setIsOpen(false)}
-            >
-              <motion.div
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                className="flex items-center gap-2 cursor-pointer"
-              >
-                <div className="w-10 h-10 bg-gradient-to-br from-accent to-accent/70 rounded-lg flex items-center justify-center">
-                  <span className="text-white font-bold text-lg">CF</span>
-                </div>
-                <div className="hidden sm:flex flex-col">
-                  <span className={`font-bold text-lg leading-none ${isDark ? 'text-white' : 'text-gray-900'}`}>CrunchFit</span>
-                  <span className="text-accent text-xs font-semibold">Pro</span>
-                </div>
-              </motion.div>
+        <div className="mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8">
+          <div className="flex h-[4.65rem] items-center justify-between">
+            <Link to="/" className="group flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-accent to-secondary shadow-lg shadow-accent/30 transition-transform duration-200 group-hover:scale-105">
+                <span className="text-sm font-extrabold tracking-wide text-white">CF</span>
+              </div>
+              <div className="hidden sm:block">
+                <p className={`text-base font-extrabold leading-none ${isDark ? 'text-white' : 'text-slate-900'}`}>
+                  CrunchFit
+                </p>
+                <p className="mt-0.5 text-[11px] font-bold uppercase tracking-[0.18em] text-accent">
+                  Pro
+                </p>
+              </div>
             </Link>
 
-            {/* Desktop Navigation */}
-            <div className="hidden lg:flex items-center gap-8">
-              {navLinks.map((link) => (
-                <motion.button
-                  key={link.key}
-                  onClick={() => handleNavClick(paths[link.key])}
-                  whileHover={{ color: '#E94560' }}
-                  className={`text-sm font-medium transition-colors duration-200 relative group ${
-                    isActive(link.key)
-                      ? 'text-accent'
-                      : isDark
-                      ? 'text-gray-300 hover:text-accent'
-                      : 'text-gray-700 hover:text-accent'
-                  }`}
-                >
-                  {t(link.i18nKey)}
-                  {isActive(link.key) && (
-                    <motion.div
-                      layoutId="navbar-indicator"
-                      className="absolute -bottom-1 left-0 right-0 h-0.5 bg-accent"
-                      transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-                    />
-                  )}
-                </motion.button>
-              ))}
+            <div className="hidden items-center gap-1 lg:flex">
+              {navLinks.map((link) => {
+                const active = location.pathname === paths[link.key];
+                return (
+                  <button
+                    key={link.key}
+                    onClick={() => handleNavClick(paths[link.key])}
+                    className={`relative rounded-xl px-3 py-2 text-sm font-semibold transition-colors duration-200 ${getNavItemClass(active)}`}
+                  >
+                    {t(link.i18nKey)}
+                    {active && (
+                      <motion.span
+                        layoutId="navbar-indicator"
+                        className="absolute -bottom-[0.35rem] left-3 right-3 h-[2.5px] rounded-full bg-accent"
+                        transition={{ type: 'spring', stiffness: 340, damping: 30 }}
+                      />
+                    )}
+                  </button>
+                );
+              })}
             </div>
 
-            {/* Right Actions */}
-            <div className="hidden lg:flex items-center gap-4">
-              {/* Theme Toggle */}
-              <motion.button
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
+            <div className="hidden items-center gap-2 lg:flex">
+              <button
                 onClick={toggleTheme}
-                className={`p-2 rounded-lg transition-colors ${
+                className={`rounded-xl border px-3 py-2 transition-colors duration-200 ${
                   isDark
-                    ? 'bg-gray-800/50 text-yellow-400 hover:bg-gray-700/50'
-                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    ? 'border-slate-700 bg-slate-800/70 text-yellow-300 hover:bg-slate-700/80'
+                    : 'border-slate-200 bg-slate-100 text-slate-700 hover:bg-slate-200'
                 }`}
                 title={t('navbar.theme')}
                 aria-label={t('accessibility.toggleTheme')}
               >
-                {isDark ? <Sun size={20} /> : <Moon size={20} />}
-              </motion.button>
+                {isDark ? <Sun size={18} /> : <Moon size={18} />}
+              </button>
 
-              <div
-                className={`text-sm font-medium px-3 py-2 rounded-lg ${
-                  isDark ? 'text-gray-300 bg-gray-800/30' : 'text-gray-700 bg-gray-100'
-                }`}
-                title={t('navbar.language')}
-              >
-                EN
-              </div>
-
-              {/* Free Trial CTA Button */}
-              <Button
-                onClick={handleFreeTrial}
-                variant="primary"
-                size="sm"
-                className="animate-pulse-soft"
-              >
-                {t('navbar.viewPlans')}
-              </Button>
-
-              {/* Cart Button */}
-              <motion.button
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
+              <button
                 onClick={() => navigate('/cart')}
-                className={`relative p-2 rounded-lg transition-colors ${
+                className={`relative rounded-xl border px-3 py-2 transition-colors duration-200 ${
                   isDark
-                    ? 'bg-gray-800/50 text-gray-300 hover:text-accent hover:bg-gray-700/50'
-                    : 'bg-gray-100 text-gray-700 hover:text-accent hover:bg-gray-200'
+                    ? 'border-slate-700 bg-slate-800/70 text-slate-200 hover:bg-slate-700/80'
+                    : 'border-slate-200 bg-slate-100 text-slate-700 hover:bg-slate-200'
                 }`}
                 aria-label="Shopping cart"
               >
-                <ShoppingCart size={20} />
+                <ShoppingCart size={18} />
                 {cartCount > 0 && (
-                  <span className="absolute -top-1 -right-1 bg-accent text-white text-xs w-5 h-5 rounded-full flex items-center justify-center font-bold">
+                  <span className="absolute -right-1.5 -top-1.5 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-accent px-1 text-[11px] font-bold text-white">
                     {cartCount > 9 ? '9+' : cartCount}
                   </span>
                 )}
-              </motion.button>
+              </button>
 
-              {/* Login Button */}
-              <Button
-                onClick={handleLogin}
-                variant="outline"
-                size="sm"
-              >
+              <Button onClick={() => navigate('/login')} variant="outline" size="sm">
                 {t('common.login')}
+              </Button>
+
+              <Button onClick={() => navigate('/free-trial')} variant="primary" size="sm" className="ml-1">
+                {t('navbar.viewPlans')}
               </Button>
             </div>
 
-            {/* Mobile Menu Button */}
-            <div className="lg:hidden flex items-center gap-3">
-              {/* Mobile Theme Toggle */}
-              <motion.button
-                whileTap={{ scale: 0.95 }}
-                onClick={toggleTheme}
-                className={`p-2 rounded-lg transition-colors ${
+            <div className="flex items-center gap-2 lg:hidden">
+              <button
+                onClick={() => navigate('/cart')}
+                className={`relative rounded-xl border p-2 transition-colors duration-200 ${
                   isDark
-                    ? 'bg-gray-800/50 text-yellow-400 hover:bg-gray-700/50'
-                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    ? 'border-slate-700 bg-slate-800/70 text-slate-200 hover:bg-slate-700/80'
+                    : 'border-slate-200 bg-slate-100 text-slate-700 hover:bg-slate-200'
+                }`}
+                aria-label="Shopping cart"
+              >
+                <ShoppingCart size={18} />
+                {cartCount > 0 && (
+                  <span className="absolute -right-1 -top-1 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-accent px-1 text-[10px] font-bold text-white">
+                    {cartCount > 9 ? '9+' : cartCount}
+                  </span>
+                )}
+              </button>
+
+              <button
+                onClick={toggleTheme}
+                className={`rounded-xl border p-2 transition-colors duration-200 ${
+                  isDark
+                    ? 'border-slate-700 bg-slate-800/70 text-yellow-300 hover:bg-slate-700/80'
+                    : 'border-slate-200 bg-slate-100 text-slate-700 hover:bg-slate-200'
                 }`}
                 aria-label={t('accessibility.toggleTheme')}
               >
-                {isDark ? <Sun size={20} /> : <Moon size={20} />}
-              </motion.button>
+                {isDark ? <Sun size={18} /> : <Moon size={18} />}
+              </button>
 
-              <span
-                className={`text-sm font-medium px-2 py-1 rounded-lg ${
-                  isDark ? 'text-gray-300 bg-gray-800/30' : 'text-gray-700 bg-gray-100'
-                }`}
-              >
-                EN
-              </span>
-
-              {/* Hamburger Menu Button */}
-              <motion.button
-                whileTap={{ scale: 0.95 }}
-                onClick={toggleMobileMenu}
-                className={`p-2 rounded-lg transition-colors ${
+              <button
+                onClick={() => setIsOpen((prev) => !prev)}
+                className={`rounded-xl border p-2 transition-colors duration-200 ${
                   isDark
-                    ? 'text-gray-300 hover:text-accent bg-gray-800/30 hover:bg-gray-800/50'
-                    : 'text-gray-700 hover:text-accent bg-gray-100 hover:bg-gray-200'
+                    ? 'border-slate-700 bg-slate-800/70 text-slate-200 hover:bg-slate-700/80'
+                    : 'border-slate-200 bg-slate-100 text-slate-700 hover:bg-slate-200'
                 }`}
                 aria-label={t('accessibility.openMenu')}
               >
-                <AnimatePresence mode="wait">
+                <AnimatePresence mode="wait" initial={false}>
                   {isOpen ? (
-                    <motion.div
+                    <motion.span
                       key="close"
-                      initial={{ rotate: 0, opacity: 0 }}
-                      animate={{ rotate: 90, opacity: 1 }}
-                      exit={{ rotate: 0, opacity: 0 }}
+                      initial={{ opacity: 0, rotate: -90 }}
+                      animate={{ opacity: 1, rotate: 0 }}
+                      exit={{ opacity: 0, rotate: 90 }}
                       transition={{ duration: 0.2 }}
+                      className="block"
                     >
-                      <X size={24} />
-                    </motion.div>
+                      <X size={20} />
+                    </motion.span>
                   ) : (
-                    <motion.div
+                    <motion.span
                       key="menu"
-                      initial={{ rotate: 90, opacity: 0 }}
-                      animate={{ rotate: 0, opacity: 1 }}
-                      exit={{ rotate: 90, opacity: 0 }}
+                      initial={{ opacity: 0, rotate: 90 }}
+                      animate={{ opacity: 1, rotate: 0 }}
+                      exit={{ opacity: 0, rotate: -90 }}
                       transition={{ duration: 0.2 }}
+                      className="block"
                     >
-                      <Menu size={24} />
-                    </motion.div>
+                      <Menu size={20} />
+                    </motion.span>
                   )}
                 </AnimatePresence>
-              </motion.button>
+              </button>
             </div>
           </div>
         </div>
 
-        {/* Mobile Menu */}
         <AnimatePresence>
           {isOpen && (
             <motion.div
-              key="mobile-menu"
-              initial={{ opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: 'auto' }}
-              exit={{ opacity: 0, height: 0 }}
-              transition={{ duration: 0.3 }}
-              className={`lg:hidden border-t transition-colors ${
-                isDark
-                  ? 'bg-gray-800/50 border-gray-700/50'
-                  : 'bg-gray-50 border-gray-200/50'
-              }`}
+              initial={{ opacity: 0, y: -12 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -8 }}
+              transition={{ duration: 0.22 }}
+              className={`lg:hidden ${isDark ? 'border-t border-slate-700/60 bg-slate-900/96' : 'border-t border-slate-200/80 bg-white/96'} backdrop-blur-xl`}
             >
-              <div className="px-4 py-4 space-y-3 max-w-md">
-                {/* Mobile Navigation Links */}
-                {navLinks.map((link, idx) => (
-                  <motion.button
-                    key={link.key}
-                    initial={{ opacity: 0, x: -20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: idx * 0.05 }}
-                    onClick={() => handleNavClick(paths[link.key])}
-                    className={`w-full text-left px-4 py-3 rounded-lg font-medium transition-all duration-200 ${
-                      isActive(link.key)
-                        ? 'bg-accent text-white'
-                        : isDark
-                        ? 'text-gray-300 hover:bg-gray-700/50'
-                        : 'text-gray-700 hover:bg-gray-200'
-                    }`}
-                  >
-                    {t(link.i18nKey)}
-                  </motion.button>
-                ))}
-
-                {/* Mobile Action Buttons */}
-                <div className={`pt-4 space-y-3 border-t ${isDark ? 'border-gray-700/50' : 'border-gray-200'}`}>
-                  <motion.div
-                    initial={{ opacity: 0, x: -20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: 0.2 }}
-                  >
-                    <Button
-                      onClick={handleFreeTrial}
-                      variant="primary"
-                      size="md"
-                      className="w-full"
+              <div className="mx-auto max-w-7xl space-y-2 px-4 pb-5 pt-4 sm:px-6">
+                {navLinks.map((link) => {
+                  const active = location.pathname === paths[link.key];
+                  return (
+                    <button
+                      key={link.key}
+                      onClick={() => handleNavClick(paths[link.key])}
+                      className={`w-full rounded-xl px-4 py-3 text-left text-sm font-semibold transition-colors duration-200 ${
+                        active
+                          ? 'bg-accent text-white'
+                          : isDark
+                          ? 'text-slate-200 hover:bg-slate-800/80'
+                          : 'text-slate-700 hover:bg-slate-100'
+                      }`}
                     >
-                      {t('navbar.viewPlans')}
-                    </Button>
-                  </motion.div>
+                      {t(link.i18nKey)}
+                    </button>
+                  );
+                })}
 
-                  <motion.div
-                    initial={{ opacity: 0, x: -20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: 0.25 }}
-                  >
-                    <Button
-                      onClick={handleLogin}
-                      variant="outline"
-                      size="md"
-                      className="w-full"
-                    >
-                      {t('common.login')}
-                    </Button>
-                  </motion.div>
+                <div className={`mt-3 grid grid-cols-2 gap-2 border-t pt-3 ${isDark ? 'border-slate-700/60' : 'border-slate-200/80'}`}>
+                  <Button onClick={() => navigate('/login')} variant="outline" size="sm" className="w-full">
+                    {t('common.login')}
+                  </Button>
+                  <Button onClick={() => navigate('/free-trial')} variant="primary" size="sm" className="w-full">
+                    {t('navbar.viewPlans')}
+                  </Button>
                 </div>
               </div>
             </motion.div>
@@ -340,8 +265,7 @@ const Navbar = () => {
         </AnimatePresence>
       </motion.nav>
 
-      {/* Spacer to prevent content overlap */}
-      <div className="h-20" />
+      <div className="h-[4.65rem]" />
     </>
   );
 };

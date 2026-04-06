@@ -5,10 +5,19 @@ import { Check, X, ArrowRight } from 'lucide-react';
 import Button from '../../components/ui/Button';
 import Card from '../../components/ui/Card';
 import Badge from '../../components/ui/Badge';
+import SEO from '../../components/seo/SEO';
 
 const MembershipPage = () => {
   const navigate = useNavigate();
+  const appUrl = import.meta.env.VITE_APP_URL || 'http://localhost:5173';
   const [billingPeriod, setBillingPeriod] = useState('monthly');
+
+  const scrollToSection = (id) => {
+    const target = document.getElementById(id);
+    if (target) {
+      target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  };
 
   const plans = [
     {
@@ -111,7 +120,13 @@ const MembershipPage = () => {
   const annualSavings = 20;
 
   return (
-    <motion.div
+    <>
+      <SEO
+        title="Membership Plans"
+        description="Compare CrunchFit Pro membership plans with pricing, features, and benefits to choose the perfect fit."
+        canonical={`${appUrl}/membership`}
+      />
+      <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       transition={{ duration: 0.5 }}
@@ -189,7 +204,11 @@ const MembershipPage = () => {
                 transition={{ delay: idx * 0.1 }}
                 whileHover={{ y: -10 }}
               >
-                <Card variant={plan.popular ? 'dark-hover' : 'dark'} className={`h-full relative ${plan.popular ? 'ring-2 ring-accent' : ''}`}>
+                <Card
+                  variant={plan.popular ? 'dark-hover' : 'dark'}
+                  className={`h-full relative cursor-pointer ${plan.popular ? 'ring-2 ring-accent' : ''}`}
+                  onClick={() => navigate('/join')}
+                >
                   {plan.popular && (
                     <div className={`absolute -top-4 left-1/2 -translate-x-1/2`}>
                       <Badge variant="primary" size="lg">
@@ -232,7 +251,10 @@ const MembershipPage = () => {
                       variant={plan.popular ? 'primary' : 'outline'}
                       size="md"
                       className="w-full"
-                      onClick={() => navigate('/join')}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        navigate('/join');
+                      }}
                     >
                       {plan.cta}
                       <ArrowRight size={16} className="ml-2" />
@@ -246,7 +268,7 @@ const MembershipPage = () => {
       </section>
 
       {/* COMPARISON TABLE */}
-      <section className="bg-dark-navy py-12 md:py-20 border-t border-accent/20">
+      <section id="faq-section" className="bg-dark-navy py-12 md:py-20 border-t border-accent/20">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -341,18 +363,39 @@ const MembershipPage = () => {
 
           <div className="space-y-4">
             {[
-              { q: 'Can I change plans anytime?', a: '100% flexible. Change or cancel your plan anytime with no penalty.' },
-              { q: 'Do you offer a trial?', a: 'Yes! Start with a 7-day free trial on any plan. No credit card required.' },
-              { q: 'Are there contracts?', a: 'No contracts. You can cancel anytime through your account settings.' },
-              { q: 'What payment methods do you accept?', a: 'We accept all major credit cards, PayPal, and Apple/Google Pay.' },
-              { q: 'Do I get a refund if I cancel?', a: 'Refunds available within 30 days of signup. Otherwise, service continues until billing date.' },
+              {
+                q: 'Can I change plans anytime?',
+                a: '100% flexible. Change or cancel your plan anytime with no penalty.',
+                action: () => navigate('/contact'),
+              },
+              {
+                q: 'Do you offer a trial?',
+                a: 'Yes! Start with a 7-day free trial on any plan. No credit card required.',
+                action: () => navigate('/free-trial'),
+              },
+              {
+                q: 'Are there contracts?',
+                a: 'No contracts. You can cancel anytime through your account settings.',
+                action: () => navigate('/contact'),
+              },
+              {
+                q: 'What payment methods do you accept?',
+                a: 'We accept all major credit cards, PayPal, and Apple/Google Pay.',
+                action: () => navigate('/contact'),
+              },
+              {
+                q: 'Do I get a refund if I cancel?',
+                a: 'Refunds available within 30 days of signup. Otherwise, service continues until billing date.',
+                action: () => navigate('/contact'),
+              },
             ].map((faq, idx) => (
               <motion.div
                 key={idx}
                 initial={{ opacity: 0, y: 10 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 transition={{ delay: idx * 0.05 }}
-                className="p-6 rounded-lg border border-accent/20 hover:border-accent/50 transition-all"
+                className="cursor-pointer p-6 rounded-lg border border-accent/20 hover:border-accent/50 transition-all"
+                onClick={faq.action}
               >
                 <h3 className="font-bold text-white mb-2">{faq.q}</h3>
                 <p className="text-light-bg/70 text-sm">{faq.a}</p>
@@ -372,13 +415,19 @@ const MembershipPage = () => {
             <h2 className="text-3xl md:text-4xl font-bold text-white mb-6">
               Ready to Start?
             </h2>
-            <Button onClick={() => navigate('/free-trial')} variant="primary" size="lg">
-              Start Your Free Trial
-            </Button>
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+              <Button onClick={() => navigate('/free-trial')} variant="primary" size="lg">
+                Start Your Free Trial
+              </Button>
+              <Button onClick={() => scrollToSection('faq-section')} variant="outline" size="lg">
+                Learn More
+              </Button>
+            </div>
           </motion.div>
         </div>
       </section>
-    </motion.div>
+      </motion.div>
+    </>
   );
 };
 

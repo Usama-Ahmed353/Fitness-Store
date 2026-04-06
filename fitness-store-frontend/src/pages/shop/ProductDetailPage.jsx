@@ -9,6 +9,57 @@ import { addToCart } from '../../app/slices/cartSlice';
 import { addToWishlist, removeFromWishlist } from '../../app/slices/wishlistSlice';
 import toast from 'react-hot-toast';
 
+const isPlaceholderImage = (url = '') => {
+  if (!url || typeof url !== 'string') return true;
+  const normalized = url.toLowerCase();
+  return (
+    normalized.includes('via.placeholder.com') ||
+    normalized.includes('placeholder.com') ||
+    normalized.includes('placehold.co') ||
+    normalized.includes('dummyimage.com') ||
+    normalized.includes('text=')
+  );
+};
+
+const getCategoryVisual = (category) => {
+  const key = String(category || '').toLowerCase();
+  if (key === 'supplements' || key === 'nutrition' || key === 'recovery') {
+    return { gradient: 'from-emerald-600 via-teal-600 to-cyan-700', emoji: '🧪', label: 'Fuel' };
+  }
+  if (key === 'equipment' || key === 'strength') {
+    return { gradient: 'from-orange-600 via-amber-600 to-yellow-700', emoji: '🏋️', label: 'Power' };
+  }
+  if (key === 'cardio') {
+    return { gradient: 'from-rose-600 via-red-600 to-orange-700', emoji: '🏃', label: 'Cardio' };
+  }
+  if (key === 'apparel') {
+    return { gradient: 'from-indigo-600 via-blue-600 to-cyan-700', emoji: '👕', label: 'Wear' };
+  }
+  if (key === 'accessories' || key === 'yoga') {
+    return { gradient: 'from-fuchsia-600 via-purple-600 to-indigo-700', emoji: '🧘', label: 'Flow' };
+  }
+  return { gradient: 'from-slate-600 via-slate-700 to-gray-800', emoji: '💪', label: 'Fit' };
+};
+
+const buildFallbackCover = (title = 'Product', category = 'other') => {
+  const visual = getCategoryVisual(category);
+  return `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(`
+    <svg xmlns="http://www.w3.org/2000/svg" width="900" height="900" viewBox="0 0 900 900">
+      <defs>
+        <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0%" stop-color="#0f172a"/>
+          <stop offset="100%" stop-color="#0b3b54"/>
+        </linearGradient>
+      </defs>
+      <rect width="900" height="900" fill="url(#g)"/>
+      <rect x="60" y="60" width="780" height="780" rx="36" fill="none" stroke="#1ecad3" stroke-opacity="0.35" stroke-width="3"/>
+      <text x="450" y="320" text-anchor="middle" font-size="120">${visual.emoji}</text>
+      <text x="450" y="430" text-anchor="middle" fill="#1ecad3" font-family="Segoe UI, Arial, sans-serif" font-size="40" font-weight="700">${visual.label}</text>
+      <text x="450" y="500" text-anchor="middle" fill="#f8fafc" font-family="Segoe UI, Arial, sans-serif" font-size="36" font-weight="700">${String(title).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')}</text>
+    </svg>
+  `)}`;
+};
+
 const ProductDetailPage = () => {
   const { slug } = useParams();
   const dispatch = useDispatch();
@@ -20,6 +71,7 @@ const ProductDetailPage = () => {
 
   const [quantity, setQuantity] = useState(1);
   const [selectedImage, setSelectedImage] = useState(0);
+  const [mainImageFailed, setMainImageFailed] = useState(false);
 
   useEffect(() => {
     dispatch(fetchProductBySlug(slug));
@@ -30,6 +82,7 @@ const ProductDetailPage = () => {
   useEffect(() => {
     setQuantity(1);
     setSelectedImage(0);
+    setMainImageFailed(false);
   }, [slug]);
 
   const handleAddToCart = () => {
@@ -65,6 +118,9 @@ const ProductDetailPage = () => {
 
   const seo = product.seo || {};
   const canonicalUrl = seo.canonicalUrl || `${window.location.origin}/product/${product.slug}`;
+  const selectedImageUrl = product.images?.[selectedImage]?.url || '';
+  const selectedImageIsPlaceholder = isPlaceholderImage(selectedImageUrl);
+  const mainFallback = buildFallbackCover(product.title, product.category);
 
   // JSON-LD structured data for product
   const jsonLd = {
@@ -117,10 +173,18 @@ const ProductDetailPage = () => {
             {/* Images */}
             <div>
               <div className="aspect-square bg-white/5 rounded-xl overflow-hidden mb-4">
-                {product.images?.[selectedImage]?.url ? (
-                  <img src={product.images[selectedImage].url} alt={product.images[selectedImage].alt || product.title} className="w-full h-full object-cover" />
+                {!selectedImageIsPlaceholder && selectedImageUrl && !mainImageFailed ? (
+                  <img
+                    src={selectedImageUrl}
+                    alt={product.images[selectedImage].alt || product.title}
+                    className="w-full h-full object-cover"
+                    onError={(e) => {
+                      setMainImageFailed(true);
+                      e.currentTarget.src = mainFallback;
+                    }}
+                  />
                 ) : (
-                  <div className="w-full h-full flex items-center justify-center text-gray-500 text-lg">No Image</div>
+                  <img src={mainFallback} alt={product.title} className="w-full h-full object-cover" />
                 )}
               </div>
               {product.images?.length > 1 && (
@@ -131,7 +195,19 @@ const ProductDetailPage = () => {
                       onClick={() => setSelectedImage(i)}
                       className={`w-20 h-20 rounded-lg overflow-hidden flex-shrink-0 border-2 transition ${i === selectedImage ? 'border-accent' : 'border-transparent'}`}
                     >
-                      <img src={img.url} alt={img.alt || ''} className="w-full h-full object-cover" />
+                      {isPlaceholderImage(img.url) ? (
+                        <img src={buildFallbackCover(product.title, product.category)} alt={img.alt || ''} className="w-full h-full object-cover" />
+                      ) : (
+                        <img
+                          src={img.url}
+                          alt={img.alt || ''}
+                          className="w-full h-full object-cover"
+                          onError={(e) => {
+                            e.currentTarget.onerror = null;
+                            e.currentTarget.src = buildFallbackCover(product.title, product.category);
+                          }}
+                        />
+                      )}
                     </button>
                   ))}
                 </div>
@@ -227,10 +303,24 @@ const ProductDetailPage = () => {
               <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
                 {related.map((rp) => {
                   const rpFinal = rp.discount > 0 ? Math.round(rp.price * (1 - rp.discount / 100) * 100) / 100 : rp.price;
+                  const relatedImage = rp.images?.[0]?.url || '';
+                  const relatedFallback = buildFallbackCover(rp.title, rp.category);
                   return (
                     <div key={rp._id} onClick={() => navigate(`/product/${rp.slug}`)} className="bg-white/5 rounded-lg overflow-hidden cursor-pointer hover:bg-white/10 transition">
                       <div className="aspect-square bg-white/5">
-                        {rp.images?.[0]?.url ? <img src={rp.images[0].url} alt={rp.title} className="w-full h-full object-cover" /> : <div className="w-full h-full" />}
+                        {!isPlaceholderImage(relatedImage) && relatedImage ? (
+                          <img
+                            src={relatedImage}
+                            alt={rp.title}
+                            className="w-full h-full object-cover"
+                            onError={(e) => {
+                              e.currentTarget.onerror = null;
+                              e.currentTarget.src = relatedFallback;
+                            }}
+                          />
+                        ) : (
+                          <img src={relatedFallback} alt={rp.title} className="w-full h-full object-cover" />
+                        )}
                       </div>
                       <div className="p-3">
                         <h4 className="text-xs font-medium line-clamp-2 mb-1">{rp.title}</h4>

@@ -1,7 +1,22 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import axios from 'axios';
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api';
+const runtimeHost = typeof window !== 'undefined' ? window.location.hostname : 'localhost';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || `http://${runtimeHost}:5001/api`;
+const api = axios.create({ baseURL: API_BASE_URL });
+
+let storeRef = null;
+export const setClassStoreRef = (s) => {
+  storeRef = s;
+};
+
+api.interceptors.request.use((config) => {
+  if (storeRef) {
+    const token = storeRef.getState()?.auth?.accessToken;
+    if (token) config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
+});
 
 // Async Thunks
 export const fetchClasses = createAsyncThunk(
@@ -9,8 +24,8 @@ export const fetchClasses = createAsyncThunk(
   async (filters = {}, { rejectWithValue }) => {
     try {
       const params = new URLSearchParams(filters);
-      const response = await axios.get(`${API_BASE_URL}/classes?${params}`);
-      return response.data.classes;
+      const response = await api.get(`/classes?${params}`);
+      return response.data?.data || [];
     } catch (error) {
       return rejectWithValue(error.response?.data?.message || 'Failed to fetch classes');
     }
@@ -21,8 +36,8 @@ export const fetchClassDetails = createAsyncThunk(
   'classes/fetchClassDetails',
   async (classId, { rejectWithValue }) => {
     try {
-      const response = await axios.get(`${API_BASE_URL}/classes/${classId}`);
-      return response.data.class;
+      const response = await api.get(`/classes/${classId}`);
+      return response.data?.data || null;
     } catch (error) {
       return rejectWithValue(error.response?.data?.message || 'Failed to fetch class details');
     }
@@ -33,10 +48,10 @@ export const bookClass = createAsyncThunk(
   'classes/bookClass',
   async ({ classId, memberId }, { rejectWithValue }) => {
     try {
-      const response = await axios.post(`${API_BASE_URL}/classes/${classId}/book`, {
+      const response = await api.post(`/classes/${classId}/book`, {
         memberId,
       });
-      return response.data.booking;
+      return response.data?.data?.booking || response.data?.data;
     } catch (error) {
       return rejectWithValue(error.response?.data?.message || 'Failed to book class');
     }
@@ -47,7 +62,7 @@ export const cancelClassBooking = createAsyncThunk(
   'classes/cancelClassBooking',
   async (bookingId, { rejectWithValue }) => {
     try {
-      await axios.delete(`${API_BASE_URL}/classes/bookings/${bookingId}`);
+      await api.delete(`/classes/${bookingId}/cancel-booking`);
       return bookingId;
     } catch (error) {
       return rejectWithValue(error.response?.data?.message || 'Failed to cancel booking');

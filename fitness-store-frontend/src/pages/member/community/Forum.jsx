@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   MessageSquare,
@@ -7,24 +7,27 @@ import {
   Clock,
   Plus,
   Search,
-  Filter
+  Share2
 } from 'lucide-react';
+import axios from 'axios';
+import { useSelector } from 'react-redux';
 import { useTheme } from '../../../context/ThemeContext';
 import { useLanguage } from '../../../context/LanguageContext';
 import {
-  FORUM_CATEGORIES,
   CATEGORY_INFO,
   filterPostsByCategory,
   searchPosts,
-  sortPosts,
-  calculatePostEngagement
+  sortPosts
 } from '../../../utils/forumCalculator';
 import ForumPostDetail from './ForumPostDetail';
 import CreatePostModal from './CreatePostModal';
 
 const Forum = ({ userId, searchQuery: initialSearch = '' }) => {
+  const runtimeHost = typeof window !== 'undefined' ? window.location.hostname : 'localhost';
+  const API = import.meta.env.VITE_API_BASE_URL || `http://${runtimeHost}:5001/api`;
   const { isDark } = useTheme();
   const { t } = useLanguage();
+  const { accessToken } = useSelector((s) => s.auth);
 
   const [activeCategory, setActiveCategory] = useState('general');
   const [sortBy, setSortBy] = useState('recent');
@@ -32,163 +35,85 @@ const Forum = ({ userId, searchQuery: initialSearch = '' }) => {
   const [showCreatePost, setShowCreatePost] = useState(false);
   const [selectedPost, setSelectedPost] = useState(null);
   const [userLikedPosts, setUserLikedPosts] = useState(new Set());
+  const [posts, setPosts] = useState([]);
+  const [loading, setLoading] = useState(true);
 
-  // Mock forum posts
-  const mockPosts = [
-    {
-      id: 1,
-      title: 'Best Pre-Workout Meals Before Morning Training',
-      content: 'Looking for suggestions on what to eat before 6 AM workouts. Want something light but energizing.',
-      category: 'nutrition',
-      authorId: 2,
+  const mapPost = (p) => {
+    const content = String(p.content || '');
+    return {
+      id: p._id,
+      _id: p._id,
+      title: content.length > 64 ? `${content.slice(0, 64)}...` : content,
+      content,
+      category: (p.tags || []).includes('nutrition')
+        ? 'nutrition'
+        : (p.tags || []).includes('workouts') || (p.tags || []).includes('strength')
+        ? 'workouts'
+        : (p.tags || []).includes('progress') || (p.tags || []).includes('transformation')
+        ? 'progress'
+        : 'general',
+      authorId: p.authorId?._id,
       author: {
-        name: 'Marcus Chen',
-        avatar: '👨‍💼',
-        level: 'Legend'
+        name: `${p.authorId?.firstName || ''} ${p.authorId?.lastName || ''}`.trim() || 'Member',
+        avatar: '👤',
+        level: 'Member',
       },
-      tags: ['nutrition', 'pre-workout', 'timing'],
-      likes: 42,
-      comments: [
-        {
-          id: 1,
-          authorId: 1,
-          author: { name: 'Sarah Johnson', avatar: '👩‍🦰' },
-          content: 'I usually have a banana with almond butter about 30 mins before.',
-          createdAt: new Date(Date.now() - 2 * 60 * 60 * 1000),
-          likes: 8
+      tags: p.tags || [],
+      likes: (p.likes || []).length,
+      comments: (p.comments || []).map((c, idx) => ({
+        id: c._id || idx + 1,
+        authorId: c.userId?._id,
+        author: {
+          name: `${c.userId?.firstName || ''} ${c.userId?.lastName || ''}`.trim() || 'Member',
+          avatar: '👤',
         },
-        {
-          id: 2,
-          authorId: 3,
-          author: { name: 'Emma Rodriguez', avatar: '👩‍🦱' },
-          content: 'Oatmeal with berries works great for me!',
-          createdAt: new Date(Date.now() - 4 * 60 * 60 * 1000),
-          likes: 5
-        }
-      ],
-      createdAt: new Date(Date.now() - 6 * 60 * 60 * 1000),
-      views: 156,
-      shares: 3
-    },
-    {
-      id: 2,
-      title: 'Progressive Overload Strategies for Plateau Breaking',
-      content: 'I\'ve been stuck on the same weights for 4 weeks. What techniques work best for breaking through?',
-      category: 'workouts',
-      authorId: 4,
-      author: {
-        name: 'James Wilson',
-        avatar: '👨‍🦲',
-        level: 'Advanced'
-      },
-      tags: ['strength', 'progression', 'plateaus'],
-      likes: 67,
-      comments: [
-        {
-          id: 1,
-          authorId: 1,
-          author: { name: 'Sarah Johnson', avatar: '👩‍🦰' },
-          content: 'Try adding 1-2 reps per set or increase volume. Also consider deloading.',
-          createdAt: new Date(Date.now() - 1 * 60 * 60 * 1000),
-          likes: 12
-        }
-      ],
-      createdAt: new Date(Date.now() - 12 * 60 * 60 * 1000),
-      views: 289,
-      shares: 8
-    },
-    {
-      id: 3,
-      title: 'Just Hit My Target Weight After 6 Months!',
-      content: 'Sticking to consistent training and nutrition finally paid off. Feeling amazing!',
-      category: 'progress',
-      authorId: 5,
-      author: {
-        name: 'Lisa Park',
-        avatar: '👩‍🦯',
-        level: 'Intermediate'
-      },
-      tags: ['transformation', 'achievement', 'motivation'],
-      likes: 89,
-      comments: [
-        {
-          id: 1,
-          authorId: 1,
-          author: { name: 'Sarah Johnson', avatar: '👩‍🦰' },
-          content: 'Congratulations! Your dedication is inspiring!',
-          createdAt: new Date(Date.now() - 30 * 60 * 1000),
-          likes: 15
-        },
-        {
-          id: 2,
-          authorId: 2,
-          author: { name: 'Marcus Chen', avatar: '👨‍💼' },
-          content: 'Amazing work! Keep it up!',
-          createdAt: new Date(Date.now() - 45 * 60 * 1000),
-          likes: 9
-        }
-      ],
-      createdAt: new Date(Date.now() - 2 * 60 * 60 * 1000),
-      views: 412,
-      shares: 23
-    },
-    {
-      id: 4,
-      title: 'Gym Etiquette - Let\'s Discuss',
-      content: 'Wanted to start a discussion about gym etiquette. What bothers you most at the gym?',
-      category: 'general',
-      authorId: 3,
-      author: {
-        name: 'Emma Rodriguez',
-        avatar: '👩‍🦱',
-        level: 'Advanced'
-      },
-      tags: ['etiquette', 'community', 'discussion'],
-      likes: 54,
-      comments: [
-        {
-          id: 1,
-          authorId: 2,
-          author: { name: 'Marcus Chen', avatar: '👨‍💼' },
-          content: 'Not re-racking weights! It\'s such a simple thing.',
-          createdAt: new Date(Date.now() - 3 * 60 * 60 * 1000),
-          likes: 18
-        }
-      ],
-      createdAt: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000),
-      views: 234,
-      shares: 5
-    },
-    {
-      id: 5,
-      title: '5 Nutrition Myths Debunked',
-      content: 'Let\'s discuss some common fitness myths. Sharing scientific sources would be appreciated!',
-      category: 'nutrition',
-      authorId: 1,
-      author: {
-        name: 'Sarah Johnson',
-        avatar: '👩‍🦰',
-        level: 'Elite'
-      },
-      tags: ['nutrition', 'science', 'myths'],
-      likes: 123,
-      comments: [],
-      createdAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000),
-      views: 567,
-      shares: 34
+        content: c.content,
+        createdAt: c.createdAt,
+        likes: 0,
+      })),
+      createdAt: p.createdAt,
+      views: 0,
+      shares: p.shareCount || 0,
+    };
+  };
+
+  const loadPosts = async () => {
+    try {
+      setLoading(true);
+      const { data } = await axios.get(`${API}/community/posts`, {
+        params: { page: 1, limit: 100 },
+      });
+      setPosts((data.data || []).map(mapPost));
+    } finally {
+      setLoading(false);
     }
-  ];
+  };
+
+  useEffect(() => {
+    loadPosts();
+  }, []);
 
   // Filter and sort posts
   const filteredPosts = useMemo(() => {
-    let posts = filterPostsByCategory(mockPosts, activeCategory);
-    posts = searchPosts(posts, searchQuery);
-    posts = sortPosts(posts, sortBy);
-    return posts;
-  }, [mockPosts, activeCategory, searchQuery, sortBy]);
+    let nextPosts = filterPostsByCategory(posts, activeCategory);
+    nextPosts = searchPosts(nextPosts, searchQuery);
+    nextPosts = sortPosts(nextPosts, sortBy);
+    return nextPosts;
+  }, [posts, activeCategory, searchQuery, sortBy]);
 
-  const handleLikePost = (postId) => {
-    setUserLikedPosts(prev => {
+  const handleLikePost = async (postId) => {
+    if (!accessToken) return;
+    const headers = { Authorization: `Bearer ${accessToken}` };
+    await axios.post(`${API}/community/posts/${postId}/like`, {}, { headers });
+    setPosts((prev) =>
+      prev.map((post) => {
+        if (post.id !== postId) return post;
+        const liked = userLikedPosts.has(postId);
+        return { ...post, likes: liked ? Math.max(0, post.likes - 1) : post.likes + 1 };
+      })
+    );
+
+    setUserLikedPosts((prev) => {
       const newSet = new Set(prev);
       if (newSet.has(postId)) {
         newSet.delete(postId);
@@ -197,6 +122,31 @@ const Forum = ({ userId, searchQuery: initialSearch = '' }) => {
       }
       return newSet;
     });
+  };
+
+  const handleCreatePost = async (formData) => {
+    if (!accessToken) throw new Error('Please login to create a post');
+    const headers = { Authorization: `Bearer ${accessToken}` };
+    await axios.post(
+      `${API}/community/posts`,
+      {
+        content: formData.content,
+        tags: [...(formData.tags || []), formData.category],
+      },
+      { headers }
+    );
+    await loadPosts();
+    setShowCreatePost(false);
+  };
+
+  const handleSharePost = async (e, postId) => {
+    e.stopPropagation();
+    try {
+      await axios.post(`${API}/community/posts/${postId}/share`);
+      setPosts((prev) => prev.map((p) => (p.id === postId ? { ...p, shares: (p.shares || 0) + 1 } : p)));
+    } catch {
+      // Ignore non-critical share counter errors.
+    }
   };
 
   const categories = [
@@ -310,7 +260,12 @@ const Forum = ({ userId, searchQuery: initialSearch = '' }) => {
       {/* Posts List */}
       <div className="space-y-4">
         <AnimatePresence mode="wait">
-          {filteredPosts.length > 0 ? (
+          {loading ? (
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className={`text-center py-12 rounded-lg ${isDark ? 'bg-gray-800' : 'bg-gray-100'}`}>
+              <p className={`${isDark ? 'text-gray-300' : 'text-gray-600'}`}>Loading community posts...</p>
+            </motion.div>
+          ) : (
+            filteredPosts.length > 0 ? (
             filteredPosts.map((post, index) => (
               <motion.div
                 key={post.id}
@@ -418,6 +373,16 @@ const Forum = ({ userId, searchQuery: initialSearch = '' }) => {
                         {Math.round((Date.now() - new Date(post.createdAt).getTime()) / (1000 * 60))}m ago
                       </span>
                     </div>
+
+                    <motion.button
+                      onClick={(e) => handleSharePost(e, post.id)}
+                      whileHover={{ scale: 1.1 }}
+                      whileTap={{ scale: 0.9 }}
+                      className="flex items-center gap-1 transition-colors"
+                    >
+                      <Share2 size={16} className={isDark ? 'text-gray-400 hover:text-orange-400' : 'text-gray-500 hover:text-orange-500'} />
+                      <span className={isDark ? 'text-gray-400' : 'text-gray-600'}>{post.shares || 0}</span>
+                    </motion.button>
                   </div>
 
                   <div className={`text-xs ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
@@ -440,6 +405,7 @@ const Forum = ({ userId, searchQuery: initialSearch = '' }) => {
                 {t('forum.beFirstToPost') || 'Be the first to start a discussion!'}
               </p>
             </motion.div>
+            )
           )}
         </AnimatePresence>
       </div>
@@ -461,13 +427,8 @@ const Forum = ({ userId, searchQuery: initialSearch = '' }) => {
       <AnimatePresence>
         {showCreatePost && (
           <CreatePostModal
-            userId={userId}
-            userName={t('common.you') || 'You'}
             onClose={() => setShowCreatePost(false)}
-            onSubmit={(newPost) => {
-              // In a real app, this would create the post
-              setShowCreatePost(false);
-            }}
+            onSubmit={handleCreatePost}
           />
         )}
       </AnimatePresence>

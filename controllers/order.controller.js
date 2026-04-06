@@ -71,20 +71,6 @@ exports.createOrder = async (req, res, next) => {
       stripePaymentIntentId: paymentIntent.id,
     });
 
-    // Decrease stock
-    for (const item of orderItems) {
-      await Product.updateOne(
-        { _id: item.product },
-        { $inc: { stock: -item.quantity } }
-      );
-    }
-
-    // Clear cart
-    cart.items = [];
-    cart.couponCode = null;
-    cart.couponDiscount = 0;
-    await cart.save();
-
     res.status(201).json({
       success: true,
       data: {
@@ -160,7 +146,53 @@ exports.confirmPayment = async (req, res, next) => {
       return res.status(403).json({ success: false, message: 'Not authorized' });
     }
 
+    if (!order.stripePaymentIntentId) {
+      return res.status(400).json({ success: false, message: 'Missing payment intent for this order' });
+    }
+
+    if (order.paymentStatus === 'paid') {
+      return res.json({ success: true, data: order });
+    }
+
+    const paymentIntent = await stripe.paymentIntents.retrieve(order.stripePaymentIntentId);
+    if (!paymentIntent || paymentIntent.status !== 'succeeded') {
+      return res.status(400).json({
+        success: false,
+        message: 'Payment has not been completed successfully',
+      });
+    }
+
+    // Validate stock right before committing the order.
+    for (const item of order.items) {
+      const product = await Product.findById(item.product);
+      if (!product || !product.isActive) {
+        return res.status(400).json({
+          success: false,
+          message: `Product \"${item.title}\" is no longer available`,
+        });
+      }
+      if (product.stock < item.quantity) {
+        return res.status(400).json({
+          success: false,
+          message: `Insufficient stock for \"${item.title}\"`,
+        });
+      }
+    }
+
+    for (const item of order.items) {
+      await Product.updateOne({ _id: item.product }, { $inc: { stock: -item.quantity } });
+    }
+
+    const cart = await Cart.findOne({ user: req.user.id });
+    if (cart) {
+      cart.items = [];
+      cart.couponCode = null;
+      cart.couponDiscount = 0;
+      await cart.save();
+    }
+
     order.paymentStatus = 'paid';
+    order.stripeChargeId = paymentIntent.latest_charge || order.stripeChargeId;
     order.status = 'processing';
     order.statusHistory.push({ status: 'processing', note: 'Payment confirmed' });
     await order.save();

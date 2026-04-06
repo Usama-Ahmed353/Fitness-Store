@@ -16,8 +16,8 @@ import {
   X,
   CheckCircle,
 } from 'lucide-react';
-import { ThemeContext } from '../../contexts/ThemeContext';
-import { LanguageContext } from '../../contexts/LanguageContext';
+import { ThemeContext } from '../../context/ThemeContext';
+import { LanguageContext } from '../../context/LanguageContext';
 import AdminLayout from '../../layouts/AdminLayout';
 
 // Mock scheduled reports

@@ -4,7 +4,6 @@ import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, L
 import {
   AlertCircle,
   Archive,
-  Barbell,
   BookOpen,
   Calendar,
   Camera,
@@ -25,8 +24,8 @@ import {
   Users,
   X,
 } from 'lucide-react';
-import { ThemeContext } from '../../contexts/ThemeContext';
-import { LanguageContext } from '../../contexts/LanguageContext';
+import { ThemeContext } from '../../context/ThemeContext';
+import { LanguageContext } from '../../context/LanguageContext';
 import AdminLayout from '../../layouts/AdminLayout';
 
 // Mock classes data

@@ -135,7 +135,15 @@ export const registerAsync = createAsyncThunk(
   async (payload, { rejectWithValue }) => {
     try {
       const response = await apiClient.post('/auth/register', payload);
-      const { user, accessToken, refreshToken } = response.data;
+      const {
+        user,
+        accessToken,
+        refreshToken,
+        emailSent,
+        emailError,
+        verificationUrl,
+        message,
+      } = response.data;
 
       if (refreshToken) {
         localStorage.setItem('refreshToken', refreshToken);
@@ -146,6 +154,10 @@ export const registerAsync = createAsyncThunk(
         user,
         accessToken,
         refreshToken,
+        emailSent,
+        emailError,
+        verificationUrl,
+        message,
       };
     } catch (error) {
       return rejectWithValue(

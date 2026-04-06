@@ -106,7 +106,7 @@ const LoginPage = () => {
           transition={{ delay: 0.1 }}
           className="w-full max-w-md"
         >
-          <Card variant="default" className="border border-accent/30">
+          <Card variant="dark" className="border border-accent/30">
             <div className="p-8">
               {/* Logo/Header */}
               <div className="text-center mb-8">

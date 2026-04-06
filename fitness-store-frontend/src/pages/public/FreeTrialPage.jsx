@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { Link, useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -7,6 +8,7 @@ import { CheckCircle, MapPin, Calendar, Gift } from 'lucide-react';
 import Button from '../../components/ui/Button';
 import Input from '../../components/ui/Input';
 import Card from '../../components/ui/Card';
+import SEO from '../../components/seo/SEO';
 import toast from 'react-hot-toast';
 
 const signupSchema = z.object({
@@ -18,8 +20,17 @@ const signupSchema = z.object({
 });
 
 const FreeTrialPage = () => {
+  const navigate = useNavigate();
+  const appUrl = import.meta.env.VITE_APP_URL || 'http://localhost:5173';
   const [submitted, setSubmitted] = useState(false);
   const [selectedGym, setSelectedGym] = useState('');
+
+  const scrollToSection = (id) => {
+    const section = document.getElementById(id);
+    if (section) {
+      section.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  };
 
   const {
     register,
@@ -50,7 +61,7 @@ const FreeTrialPage = () => {
       
       // Simulate redirect to member portal after a delay
       setTimeout(() => {
-        window.location.href = '/member/dashboard';
+        navigate('/member/dashboard');
       }, 2000);
     } catch (error) {
       toast.error('Signup failed. Please try again.');
@@ -62,26 +73,36 @@ const FreeTrialPage = () => {
       icon: '⏰',
       title: '7 Days Free',
       description: 'Full access to all BASE plan features',
+      action: () => scrollToSection('signup-section'),
     },
     {
       icon: '💳',
       title: 'No Credit Card Required',
       description: 'Start working out immediately, no payment info needed upfront',
+      action: () => scrollToSection('faq-section'),
     },
     {
       icon: '🏋️',
       title: 'Unlimited Access',
       description: 'Use any of our 250+ locations worldwide',
+      action: () => navigate('/locations'),
     },
     {
       icon: '🎯',
       title: 'Full Amenities',
       description: 'All gym facilities, classes, and digital content included',
+      action: () => navigate('/classes'),
     },
   ];
 
   return (
-    <motion.div
+    <>
+      <SEO
+        title="7-Day Free Trial"
+        description="Start your 7-day CrunchFit Pro trial with no credit card required and full access to gym amenities."
+        canonical={`${appUrl}/free-trial`}
+      />
+      <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       transition={{ duration: 0.5 }}
@@ -130,7 +151,7 @@ const FreeTrialPage = () => {
                 whileInView={{ opacity: 1, y: 0 }}
                 transition={{ delay: idx * 0.1 }}
               >
-                <Card variant="dark">
+                <Card variant="dark" className="cursor-pointer" onClick={benefit.action}>
                   <div className="p-6 text-center">
                     <div className="text-5xl mb-4">{benefit.icon}</div>
                     <h3 className="text-xl font-bold text-white mb-3">{benefit.title}</h3>
@@ -144,7 +165,7 @@ const FreeTrialPage = () => {
       </section>
 
       {/* SIGNUP SECTION */}
-      <section className="bg-gradient-to-b from-dark-navy/50 to-dark-navy py-12 md:py-20 border-t border-accent/20">
+      <section id="signup-section" className="bg-gradient-to-b from-dark-navy/50 to-dark-navy py-12 md:py-20 border-t border-accent/20">
         <div className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8">
           <AnimatePresence mode="wait">
             {!submitted ? (
@@ -255,7 +276,7 @@ const FreeTrialPage = () => {
                     </Button>
 
                     <p className="text-center text-light-bg/60 text-sm">
-                      Already have an account? <a href="/login" className="text-accent hover:underline">Log in here</a>
+                      Already have an account? <Link to="/login" className="text-accent hover:underline">Log in here</Link>
                     </p>
                   </form>
                 </Card>
@@ -311,10 +332,10 @@ const FreeTrialPage = () => {
                     </div>
 
                     <div className="space-y-3">
-                      <Button variant="primary" size="lg" className="w-full">
+                      <Button onClick={() => navigate('/member/dashboard')} variant="primary" size="lg" className="w-full">
                         Go to My Gym Dashboard
                       </Button>
-                      <Button variant="outline" size="lg" className="w-full">
+                      <Button onClick={() => navigate('/membership')} variant="outline" size="lg" className="w-full">
                         Continue Shopping Plans
                       </Button>
                     </div>
@@ -331,7 +352,7 @@ const FreeTrialPage = () => {
       </section>
 
       {/* FAQ MINI */}
-      <section className="bg-dark-navy py-12 md:py-20 border-t border-accent/20">
+      <section id="faq-section" className="bg-dark-navy py-12 md:py-20 border-t border-accent/20">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
           <h2 className="text-3xl font-bold text-white mb-8 text-center">
             Common Questions
@@ -387,7 +408,8 @@ const FreeTrialPage = () => {
           </motion.div>
         </div>
       </section>
-    </motion.div>
+      </motion.div>
+    </>
   );
 };
 
