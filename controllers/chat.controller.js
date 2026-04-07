@@ -37,7 +37,8 @@ exports.chat = async (req, res, next) => {
 
     res.json({ success: true, data: response });
   } catch (error) {
-    next(error);
+    console.error('Chat error:', error.message);
+    res.status(500).json({ success: false, message: error.message || 'Chat request failed' });
   }
 };
 

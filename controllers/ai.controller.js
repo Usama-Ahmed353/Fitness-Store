@@ -3,7 +3,24 @@ const Product = require('../models/Product');
 const Order = require('../models/Order');
 const Cart = require('../models/Cart');
 const User = require('../models/User');
-const { callGeminiChat } = require('../services/gemini.service');
+
+let callGeminiChat;
+try {
+  callGeminiChat = require('../services/gemini.service').callGeminiChat;
+} catch {
+  callGeminiChat = null;
+}
+
+// Safe wrapper: returns { content, parsedJson } or null if Gemini is unavailable
+async function safeGeminiCall(messages) {
+  if (!callGeminiChat || !process.env.GEMINI_API_KEY) return null;
+  try {
+    return await callGeminiChat(messages);
+  } catch (err) {
+    console.warn('[AI] Gemini call failed, using rule-based fallback:', err.message);
+    return null;
+  }
+}
 
 const VALID_CATEGORIES = [
   'supplements',
@@ -143,7 +160,7 @@ async function resolveOrderByIdentifier(orderId, userId, isAdmin) {
   return order;
 }
 
-exports.searchProductsWithAI = async (req, res, next) => {
+exports.searchProductsWithAI = async (req, res) => {
   try {
     const userInput = String(req.body?.userInput || '').trim();
     const history = buildChatHistory(req.body?.history);
@@ -152,21 +169,47 @@ exports.searchProductsWithAI = async (req, res, next) => {
       return res.status(400).json({ success: false, message: 'userInput is required' });
     }
 
-    const ai = await callGeminiChat([
+    // Try AI-powered filter extraction, fall back to rule-based
+    const ai = await safeGeminiCall([
       {
         role: 'system',
         content:
           'Convert user query into JSON filters: price, category, brand, rating. Return only JSON.',
       },
       ...history,
-      {
-        role: 'user',
-        content: userInput,
-      },
+      { role: 'user', content: userInput },
     ]);
 
-    const normalizedFilters = normalizeFilters(ai.parsedJson || {});
+    let normalizedFilters;
+    if (ai?.parsedJson) {
+      normalizedFilters = normalizeFilters(ai.parsedJson);
+    } else {
+      // Rule-based fallback: extract filters from natural language
+      const lowerInput = userInput.toLowerCase();
+      const priceMatch = lowerInput.match(/under\s*\$?(\d+)/);
+      const aboveMatch = lowerInput.match(/(?:above|over)\s*\$?(\d+)/);
+      const foundCat = VALID_CATEGORIES.find((c) => lowerInput.includes(c));
+      normalizedFilters = normalizeFilters({
+        category: foundCat || null,
+        price: {
+          min: aboveMatch ? Number(aboveMatch[1]) : null,
+          max: priceMatch ? Number(priceMatch[1]) : null,
+        },
+      });
+    }
+
     const filter = buildProductFilter(normalizedFilters);
+
+    // If no specific filters, try text search
+    if (Object.keys(filter).length <= 1) {
+      const searchWords = userInput.replace(/show|me|find|get|i\s+want|i\s+need|looking\s+for/gi, '').trim();
+      if (searchWords) {
+        filter.$or = [
+          { title: { $regex: searchWords.split(/\s+/).join('|'), $options: 'i' } },
+          { tags: { $regex: searchWords.split(/\s+/).join('|'), $options: 'i' } },
+        ];
+      }
+    }
 
     const products = await Product.find(filter)
       .sort({ 'ratings.average': -1, viewCount: -1, createdAt: -1 })
@@ -183,11 +226,12 @@ exports.searchProductsWithAI = async (req, res, next) => {
       },
     });
   } catch (error) {
-    return next(error);
+    console.error('AI endpoint error:', error.message);
+    return res.status(500).json({ success: false, message: error.message || 'AI request failed' });
   }
 };
 
-exports.recommendProductsWithAI = async (req, res, next) => {
+exports.recommendProductsWithAI = async (req, res) => {
   try {
     const history = buildChatHistory(req.body?.history);
     let userBehaviorData = req.body?.userBehaviorData || {};
@@ -217,20 +261,17 @@ exports.recommendProductsWithAI = async (req, res, next) => {
       .limit(10)
       .lean();
 
-    const ai = await callGeminiChat([
+    const ai = await safeGeminiCall([
       {
         role: 'system',
         content:
           'Recommend fitness products based on user data. Return JSON object with optional keys: productIds (array), categories (array).',
       },
       ...history,
-      {
-        role: 'user',
-        content: JSON.stringify(userBehaviorData),
-      },
+      { role: 'user', content: JSON.stringify(userBehaviorData) },
     ]);
 
-    const parsed = ai.parsedJson && typeof ai.parsedJson === 'object' ? ai.parsedJson : {};
+    const parsed = ai?.parsedJson && typeof ai.parsedJson === 'object' ? ai.parsedJson : {};
     const productIds = Array.isArray(parsed.productIds) ? parsed.productIds : [];
     const categories = Array.isArray(parsed.categories)
       ? parsed.categories.map((c) => String(c).toLowerCase()).filter((c) => VALID_CATEGORIES.includes(c))
@@ -269,11 +310,12 @@ exports.recommendProductsWithAI = async (req, res, next) => {
       },
     });
   } catch (error) {
-    return next(error);
+    console.error('AI endpoint error:', error.message);
+    return res.status(500).json({ success: false, message: error.message || 'AI request failed' });
   }
 };
 
-exports.getOrderStatusWithAI = async (req, res, next) => {
+exports.getOrderStatusWithAI = async (req, res) => {
   try {
     const userMessage = String(req.body?.userMessage || req.body?.message || '').trim();
     const history = buildChatHistory(req.body?.history);
@@ -282,23 +324,25 @@ exports.getOrderStatusWithAI = async (req, res, next) => {
       return res.status(400).json({ success: false, message: 'userMessage is required' });
     }
 
-    const [user, ai] = await Promise.all([
-      User.findById(req.user.id).lean(),
-      callGeminiChat([
-        {
-          role: 'system',
-          content: "Extract order ID from message. Return JSON: {orderId: ''}",
-        },
-        ...history,
-        {
-          role: 'user',
-          content: userMessage,
-        },
-      ]),
+    const user = await User.findById(req.user.id).lean();
+    const ai = await safeGeminiCall([
+      {
+        role: 'system',
+        content: "Extract order ID from message. Return JSON: {orderId: ''}",
+      },
+      ...history,
+      { role: 'user', content: userMessage },
     ]);
 
-    const parsed = ai.parsedJson && typeof ai.parsedJson === 'object' ? ai.parsedJson : {};
-    const extractedOrderId = parsed.orderId || parsed.orderNumber || '';
+    let extractedOrderId = '';
+    if (ai?.parsedJson) {
+      const parsed = ai.parsedJson;
+      extractedOrderId = parsed.orderId || parsed.orderNumber || '';
+    } else {
+      // Rule-based fallback: extract order number from message
+      const orderMatch = userMessage.match(/FS-[A-Z0-9]+-\d+/i) || userMessage.match(/#?([A-Z0-9-]{6,})/i);
+      extractedOrderId = orderMatch ? orderMatch[0] : '';
+    }
 
     const isAdmin = ['admin', 'super_admin'].includes(user?.role);
     let order = await resolveOrderByIdentifier(extractedOrderId, req.user.id, isAdmin);
@@ -336,11 +380,12 @@ exports.getOrderStatusWithAI = async (req, res, next) => {
       },
     });
   } catch (error) {
-    return next(error);
+    console.error('AI endpoint error:', error.message);
+    return res.status(500).json({ success: false, message: error.message || 'AI request failed' });
   }
 };
 
-exports.handleCartActionWithAI = async (req, res, next) => {
+exports.handleCartActionWithAI = async (req, res) => {
   try {
     const userMessage = String(req.body?.userMessage || req.body?.message || '').trim();
     const history = buildChatHistory(req.body?.history);
@@ -349,27 +394,46 @@ exports.handleCartActionWithAI = async (req, res, next) => {
       return res.status(400).json({ success: false, message: 'userMessage is required' });
     }
 
-    const ai = await callGeminiChat([
+    const ai = await safeGeminiCall([
       {
         role: 'system',
         content:
           "Convert message into cart actions. Return JSON: {action, productId, quantity, coupon}",
       },
       ...history,
-      {
-        role: 'user',
-        content: userMessage,
-      },
+      { role: 'user', content: userMessage },
     ]);
 
-    const parsed = ai.parsedJson && typeof ai.parsedJson === 'object' ? ai.parsedJson : {};
-    const action = String(parsed.action || '').toLowerCase();
-    const quantity = Math.max(1, Number(parsed.quantity) || 1);
-    const coupon = parsed.coupon ? String(parsed.coupon).trim().toUpperCase() : null;
+    let action, quantity, coupon, productSearch;
+    if (ai?.parsedJson) {
+      const parsed = ai.parsedJson;
+      action = String(parsed.action || '').toLowerCase();
+      quantity = Math.max(1, Number(parsed.quantity) || 1);
+      coupon = parsed.coupon ? String(parsed.coupon).trim().toUpperCase() : null;
+      productSearch = parsed.productId || null;
+    } else {
+      // Rule-based fallback
+      const lower = userMessage.toLowerCase();
+      quantity = 1;
+      const qtyMatch = lower.match(/(\d+)\s*(?:x|items?|units?|pcs?)/);
+      if (qtyMatch) quantity = Math.max(1, Number(qtyMatch[1]));
+
+      if (/add|put|buy/.test(lower)) action = 'add';
+      else if (/remove|delete|take out/.test(lower)) action = 'remove';
+      else if (/coupon|apply|code/.test(lower)) action = 'apply_coupon';
+      else if (/view|show|what/.test(lower)) action = 'view';
+      else action = 'view';
+
+      const couponMatch = lower.match(/(?:coupon|code|apply)\s+([A-Z0-9]+)/i);
+      coupon = couponMatch ? couponMatch[1].toUpperCase() : null;
+
+      // Extract product name (remove action words)
+      productSearch = userMessage.replace(/add\s+(to\s+)?cart|remove\s+from\s+cart|put\s+in\s+cart|buy|apply\s+coupon\s+\w+/gi, '').trim() || null;
+    }
 
     let product = null;
-    if (parsed.productId) {
-      const productId = String(parsed.productId).trim();
+    if (productSearch) {
+      const productId = String(productSearch).trim();
       if (mongoose.Types.ObjectId.isValid(productId)) {
         product = await Product.findById(productId);
       }
@@ -455,11 +519,12 @@ exports.handleCartActionWithAI = async (req, res, next) => {
       },
     });
   } catch (error) {
-    return next(error);
+    console.error('AI endpoint error:', error.message);
+    return res.status(500).json({ success: false, message: error.message || 'AI request failed' });
   }
 };
 
-exports.answerFAQWithAI = async (req, res, next) => {
+exports.answerFAQWithAI = async (req, res) => {
   try {
     const userMessage = String(req.body?.userMessage || req.body?.message || '').trim();
     const history = buildChatHistory(req.body?.history);
@@ -468,27 +533,50 @@ exports.answerFAQWithAI = async (req, res, next) => {
       return res.status(400).json({ success: false, message: 'userMessage is required' });
     }
 
-    const ai = await callGeminiChat([
+    const ai = await safeGeminiCall([
       {
         role: 'system',
         content:
           'You are a fitness store support assistant. Answer FAQs clearly and professionally.',
       },
       ...history,
-      {
-        role: 'user',
-        content: userMessage,
-      },
+      { role: 'user', content: userMessage },
     ]);
+
+    let answer;
+    if (ai?.content) {
+      answer = ai.content;
+    } else {
+      // Rule-based FAQ fallback
+      const lower = userMessage.toLowerCase();
+      if (/shipping|delivery|ship/.test(lower)) {
+        answer = '🚚 We offer FREE shipping on orders over $50. Standard delivery takes 3-5 business days. Express shipping (1-2 days) is available for $12.99.';
+      } else if (/return|refund/.test(lower)) {
+        answer = '↩️ Returns are accepted within 30 days of delivery for unused items in original packaging. Refunds are processed within 5-7 business days after we receive the item.';
+      } else if (/payment|pay|card|stripe/.test(lower)) {
+        answer = '💳 We accept credit/debit cards (Visa, Mastercard, Amex) via Stripe secure checkout. All payments are encrypted and processed securely.';
+      } else if (/order|how.*buy|how.*order/.test(lower)) {
+        answer = '🛒 To order: Browse products → Add to cart → Go to checkout → Enter shipping info → Pay with card. You\'ll receive an order confirmation email.';
+      } else if (/track|where.*order/.test(lower)) {
+        answer = '📦 Go to your Orders page to see current status and tracking info. You can also ask me "Where is my order?" and I\'ll look it up for you!';
+      } else if (/account|signup|register/.test(lower)) {
+        answer = '👤 Click "Register" at the top right. Fill in your details and you\'re ready to shop! You can also use demo accounts for testing.';
+      } else if (/coupon|discount|promo/.test(lower)) {
+        answer = '🏷️ Available coupons: WELCOME10 (10% off), FIT20 (20% off $50+), SAVE15 (15% off $30+), SUMMER25 (25% off $100+). Apply at checkout!';
+      } else {
+        answer = "👋 I can help with: shipping info, return policy, payment methods, ordering, account setup, order tracking, and product recommendations. What would you like to know?";
+      }
+    }
 
     return res.json({
       success: true,
       data: {
         type: 'faq',
-        message: ai.content || 'Sorry, I could not generate a response right now.',
+        message: answer,
       },
     });
   } catch (error) {
-    return next(error);
+    console.error('AI endpoint error:', error.message);
+    return res.status(500).json({ success: false, message: error.message || 'AI request failed' });
   }
 };
