@@ -594,31 +594,38 @@ const LocationsPage = () => {
               <div className="space-y-3 max-h-[500px] overflow-y-auto">
                 <AnimatePresence>
                   {filteredGyms.map((gym, idx) => (
-                    <motion.button
+                    <motion.div
                       key={gym.id}
+                      role="button"
+                      tabIndex={0}
                       initial={{ opacity: 0, y: 10 }}
                       animate={{ opacity: 1, y: 0 }}
                       exit={{ opacity: 0, y: -10 }}
                       transition={{ delay: idx * 0.05 }}
                       onClick={() => handleSelectGym(gym)}
-                      className={`w-full p-4 rounded-lg border-2 transition-all text-left ${
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          handleSelectGym(gym);
+                        }
+                      }}
+                      className={`w-full p-4 rounded-lg border-2 transition-all text-left cursor-pointer focus:outline-none focus:ring-2 focus:ring-accent/50 ${
                         selectedGym?.id === gym.id
                           ? 'border-accent bg-accent/10'
                           : 'border-accent/20 bg-dark-navy/50 hover:border-accent/50'
                       }`}
                     >
                       <div className="flex items-start gap-3">
-                        <span className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-accent to-secondary text-xs font-bold tracking-[0.12em] text-white">{gym.image}</span>
-                        <div className="flex-1">
-                          <h4 className="font-bold text-white">{gym.name}</h4>
-                          <div className="flex items-center gap-1 mt-1">
+                        <span className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-accent to-secondary text-xs font-bold tracking-[0.12em] text-white cursor-none pointer-events-none">{gym.image}</span>
+                        <div className="flex-1 pointer-events-none">
+                          <h4 className="font-bold text-white mb-1">{gym.name}</h4>
+                          <div className="flex items-center gap-1 mt-1 pointer-events-auto">
                             <Rating value={gym.rating} readonly size="sm" />
                             <span className="text-light-bg/60 text-xs">({gym.reviews})</span>
                           </div>
-                          <p className="text-accent text-sm font-semibold">{gym.distance} miles away</p>
+                          <p className="text-accent text-sm font-semibold mt-1">{gym.distance} miles away</p>
                         </div>
                       </div>
-                    </motion.button>
+                    </motion.div>
                   ))}
                 </AnimatePresence>
               </div>

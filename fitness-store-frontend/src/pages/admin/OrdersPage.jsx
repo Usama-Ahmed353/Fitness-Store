@@ -45,6 +45,8 @@ const OrdersPage = () => {
       setSelectedOrder(null);
       setNewStatus('');
       load();
+    } else {
+      toast.error(result.payload || 'Failed to update order status');
     }
   };
 

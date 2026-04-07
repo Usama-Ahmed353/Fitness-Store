@@ -299,7 +299,7 @@ const MemberLayout = ({ children }) => {
                     >
                       {[
                         { label: t('member.nav.profile'), path: '/member/profile' },
-                        { label: t('member.nav.billing'), path: '/member/billing' },
+                        { label: t('member.nav.billing'), path: '/member/settings?tab=billing' },
                         { label: t('common.settings'), path: '/member/settings' },
                       ].map((item, idx) => (
                         <button

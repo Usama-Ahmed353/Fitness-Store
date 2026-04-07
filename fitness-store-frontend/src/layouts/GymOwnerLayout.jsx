@@ -13,15 +13,12 @@ import {
   TrendingUp,
   BarChart3,
   Mail,
-  Gear,
-  Zap,
   ChevronDown,
 } from 'lucide-react';
-import { ThemeContext } from '../../contexts/ThemeContext';
+import { useTheme } from '../context/ThemeContext';
 
 const GymOwnerLayout = ({ children }) => {
-  const { theme } = useContext(ThemeContext);
-  const isDark = theme === 'dark';
+  const { isDark } = useTheme();
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [showUserMenu, setShowUserMenu] = useState(false);
 

@@ -36,11 +36,11 @@ const Navbar = () => {
   }, [location.pathname]);
 
   const navLinks = [
-    { key: 'shop', i18nKey: 'navbar.shop' },
-    { key: 'locations', i18nKey: 'navbar.findGym' },
-    { key: 'classes', i18nKey: 'navbar.exploreClasses' },
-    { key: 'training', i18nKey: 'navbar.startTraining' },
-    { key: 'crunch-plus', i18nKey: 'navbar.viewPlans' },
+    { key: 'shop', i18nKey: 'navbar.shop', label: 'Shop' },
+    { key: 'locations', i18nKey: 'navbar.findGym', label: 'Find a Gym' },
+    { key: 'classes', i18nKey: 'navbar.exploreClasses', label: 'Explore Classes' },
+    { key: 'training', i18nKey: 'navbar.startTraining', label: 'Start Training' },
+    { key: 'crunch-plus', i18nKey: 'navbar.viewPlans', label: 'View Plans' },
   ];
 
   const paths = {
@@ -78,10 +78,6 @@ const Navbar = () => {
       return 'text-accent';
     }
     return isDark ? 'text-slate-300 hover:text-white' : 'text-slate-700 hover:text-slate-900';
-  };
-
-  const handleNavClick = (path) => {
-    navigate(path);
   };
 
   const handleLogout = async () => {
@@ -130,13 +126,13 @@ const Navbar = () => {
               {navLinks.map((link) => {
                 const active = location.pathname === paths[link.key];
                 return (
-                  <button
+                  <Link
                     key={link.key}
-                    onClick={() => handleNavClick(paths[link.key])}
+                    to={paths[link.key]}
                     onMouseEnter={() => prefetchRoute(link.key)}
-                    className={`relative rounded-xl px-3 py-2 text-sm font-semibold transition-colors duration-200 ${getNavItemClass(active)}`}
+                    className={`relative rounded-xl px-3 py-2 text-sm font-semibold transition-colors duration-200 ${getNavItemClass(active)} block`}
                   >
-                    {t(link.i18nKey)}
+                    {t(link.i18nKey) && t(link.i18nKey) !== link.i18nKey ? t(link.i18nKey) : link.label}
                     {active && (
                       <motion.span
                         layoutId="navbar-indicator"
@@ -144,7 +140,7 @@ const Navbar = () => {
                         transition={{ type: 'spring', stiffness: 340, damping: 30 }}
                       />
                     )}
-                  </button>
+                  </Link>
                 );
               })}
             </div>
@@ -163,9 +159,9 @@ const Navbar = () => {
                 {isDark ? <Sun size={18} /> : <Moon size={18} />}
               </button>
 
-              <button
-                onClick={() => navigate('/cart')}
-                className={`relative rounded-xl border px-3 py-2 transition-colors duration-200 ${
+              <Link
+                to="/cart"
+                className={`relative rounded-xl border px-3 py-2 transition-colors duration-200 flex items-center ${
                   isDark
                     ? 'border-slate-700 bg-slate-800/70 text-slate-200 hover:bg-slate-700/80'
                     : 'border-slate-200 bg-slate-100 text-slate-700 hover:bg-slate-200'
@@ -178,7 +174,7 @@ const Navbar = () => {
                     {cartCount > 9 ? '9+' : cartCount}
                   </span>
                 )}
-              </button>
+              </Link>
 
               {isAuthenticated ? (
                 <>
@@ -203,9 +199,9 @@ const Navbar = () => {
             </div>
 
             <div className="flex items-center gap-2 lg:hidden">
-              <button
-                onClick={() => navigate('/cart')}
-                className={`relative rounded-xl border p-2 transition-colors duration-200 ${
+              <Link
+                to="/cart"
+                className={`relative rounded-xl border p-2 transition-colors duration-200 flex items-center ${
                   isDark
                     ? 'border-slate-700 bg-slate-800/70 text-slate-200 hover:bg-slate-700/80'
                     : 'border-slate-200 bg-slate-100 text-slate-700 hover:bg-slate-200'
@@ -218,7 +214,7 @@ const Navbar = () => {
                     {cartCount > 9 ? '9+' : cartCount}
                   </span>
                 )}
-              </button>
+              </Link>
 
               <button
                 onClick={toggleTheme}
@@ -284,11 +280,12 @@ const Navbar = () => {
                 {navLinks.map((link) => {
                   const active = location.pathname === paths[link.key];
                   return (
-                    <button
+                    <Link
                       key={link.key}
-                      onClick={() => handleNavClick(paths[link.key])}
+                      to={paths[link.key]}
+                      onClick={() => setIsOpen(false)}
                       onMouseEnter={() => prefetchRoute(link.key)}
-                      className={`w-full rounded-xl px-4 py-3 text-left text-sm font-semibold transition-colors duration-200 ${
+                      className={`w-full block rounded-xl px-4 py-3 text-left text-sm font-semibold transition-colors duration-200 ${
                         active
                           ? 'bg-accent text-white'
                           : isDark
@@ -296,8 +293,8 @@ const Navbar = () => {
                           : 'text-slate-700 hover:bg-slate-100'
                       }`}
                     >
-                      {t(link.i18nKey)}
-                    </button>
+                      {t(link.i18nKey) && t(link.i18nKey) !== link.i18nKey ? t(link.i18nKey) : link.label}
+                    </Link>
                   );
                 })}
 

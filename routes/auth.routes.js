@@ -10,6 +10,7 @@ const {
   getMe,
   changePassword,
   updateMe,
+  resendVerification,
 } = require('../controllers/auth.controller');
 const { verifyToken } = require('../middleware/auth');
 
@@ -22,6 +23,7 @@ router.post('/refresh-token', refreshToken);
 router.post('/refresh', refreshToken);
 router.get('/verify-email', verifyEmail);
 router.get('/verify-email/:token', verifyEmail);
+router.post('/resend-verification', resendVerification);
 router.post('/forgot-password', forgotPassword);
 router.post('/reset-password', resetPassword);
 router.post('/reset-password/:token', resetPassword);

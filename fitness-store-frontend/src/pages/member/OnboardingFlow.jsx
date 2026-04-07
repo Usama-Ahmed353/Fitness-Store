@@ -245,17 +245,24 @@ const OnboardingFlow = () => {
                 {/* Gym List */}
                 <div className="space-y-3 mb-8 max-h-96 overflow-y-auto">
                   {filteredGyms.map((gym) => (
-                    <motion.button
+                    <motion.div
                       key={gym.id}
+                      role="button"
+                      tabIndex={0}
                       onClick={() => setSelectedGym(gym.id)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          setSelectedGym(gym.id);
+                        }
+                      }}
                       whileHover={{ scale: 1.02 }}
-                      className={`w-full p-4 rounded-lg border-2 transition-all text-left ${
+                      className={`w-full p-4 rounded-lg border-2 transition-all text-left cursor-pointer focus:outline-none focus:ring-2 focus:ring-accent/50 ${
                         selectedGym === gym.id
                           ? 'border-accent bg-accent/10'
                           : 'border-accent/20 hover:border-accent/50'
                       }`}
                     >
-                      <div className="flex items-start justify-between">
+                      <div className="flex items-start justify-between pointer-events-none">
                         <div>
                           <h3 className="font-bold text-white mb-1">{gym.name}</h3>
                           <p className="text-light-bg/70 text-sm mb-2 flex items-center gap-2">
@@ -265,7 +272,7 @@ const OnboardingFlow = () => {
                           <p className="text-accent text-xs mb-2">{gym.distance}</p>
                           <div className="flex gap-2">
                             {gym.amenities.map((amenity, idx) => (
-                              <span key={idx} className="px-2 py-1 rounded-full bg-accent/20 text-accent text-xs">
+                              <span key={idx} className="px-2 py-1 rounded-full bg-accent/20 text-accent text-xs pointer-events-auto">
                                 {amenity}
                               </span>
                             ))}
@@ -275,7 +282,7 @@ const OnboardingFlow = () => {
                           <div className="text-accent text-xl">✓</div>
                         )}
                       </div>
-                    </motion.button>
+                    </motion.div>
                   ))}
                 </div>
 

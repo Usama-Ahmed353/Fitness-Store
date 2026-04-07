@@ -57,7 +57,7 @@ exports.register = async (req, res, next) => {
     };
     const resolvedRole = roleMap[String(accountType || 'member').toLowerCase()] || 'member';
 
-    // Create user
+    // Create user with auto-verification
     user = await User.create({
       firstName,
       lastName,
@@ -65,57 +65,28 @@ exports.register = async (req, res, next) => {
       password,
       role: resolvedRole,
       phone: phone || undefined,
+      isEmailVerified: true, // Auto-verify the user since SMTP is not configured
     });
 
-    // Generate email verification token
-    const emailToken = user.generateEmailVerificationToken();
-    await user.save({ validateBeforeSave: false });
-
-    // Send verification email
-    const verificationUrl = `${getFrontendUrl()}/verify-email?token=${encodeURIComponent(emailToken)}&email=${encodeURIComponent(user.email)}`;
-    let emailSent = false;
-    let emailError = null;
-
-    try {
-      await sendEmail({
-        email: user.email,
-        subject: 'Verify Your CrunchFit Account',
-        message: `Please verify your email by clicking this link: ${verificationUrl}`,
-        html: `
-          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-            <h2>Verify Your Email</h2>
-            <p>Hi ${user.firstName},</p>
-            <p>Thanks for signing up. Please verify your email by clicking the button below:</p>
-            <p>
-              <a href="${verificationUrl}" style="background:#0ea5a8;color:#fff;padding:12px 20px;border-radius:6px;text-decoration:none;display:inline-block;">
-                Verify Email
-              </a>
-            </p>
-            <p>Or open this link:</p>
-            <p style="word-break: break-all;">${verificationUrl}</p>
-          </div>
-        `,
-      });
-      emailSent = true;
-    } catch (err) {
-      emailError = err.message;
-      console.error('Verification email send failed:', err.message);
-    }
-
-    // Return response with tokens
+    // Create tokens
     const accessToken = user.generateJWT();
     const refreshToken = user.generateRefreshToken();
 
+    // Set cookies
+    const cookieOptions = {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'Strict',
+    };
+
+    res.cookie('token', accessToken, { ...cookieOptions, maxAge: 7 * 24 * 60 * 60 * 1000 });
+    res.cookie('refreshToken', refreshToken, { ...cookieOptions, maxAge: 30 * 24 * 60 * 60 * 1000 });
+
     res.status(201).json({
       success: true,
-      message: emailSent
-        ? 'User registered successfully. Please verify your email.'
-        : 'User registered, but verification email could not be sent. Please contact support or configure email settings.',
+      message: 'Account created and verified successfully.',
       accessToken,
       refreshToken,
-      emailSent,
-      emailError,
-      verificationUrl: process.env.NODE_ENV === 'development' ? verificationUrl : undefined,
       user: {
         id: user._id,
         firstName: user.firstName,
@@ -163,6 +134,15 @@ exports.login = async (req, res, next) => {
       return res.status(401).json({
         success: false,
         message: 'Invalid credentials',
+      });
+    }
+
+    // Check email verification
+    if (!user.isEmailVerified) {
+      return res.status(401).json({
+        success: false,
+        isEmailVerified: false,
+        message: 'Please verify your email address to log in.',
       });
     }
 
@@ -327,6 +307,77 @@ exports.verifyEmail = async (req, res, next) => {
     res.status(400).json({
       success: false,
       message: 'Invalid or expired token',
+    });
+  }
+};
+
+// @desc    Resend Verification Email
+// @route   POST /api/auth/resend-verification
+// @access  Public
+exports.resendVerification = async (req, res, next) => {
+  try {
+    const { email } = req.body;
+
+    if (!email) {
+      return res.status(400).json({
+        success: false,
+        message: 'Please provide an email',
+      });
+    }
+
+    const user = await User.findOne({ email });
+
+    if (!user) {
+      // Return true to prevent email enumeration attacks
+      return res.status(200).json({
+        success: true,
+        message: 'If an account with that email exists, a verification link has been sent.',
+      });
+    }
+
+    if (user.isEmailVerified) {
+      return res.status(400).json({
+        success: false,
+        message: 'This account has already been verified. Please log in.',
+      });
+    }
+
+    // Generate new token
+    const emailToken = user.generateEmailVerificationToken();
+    await user.save({ validateBeforeSave: false });
+
+    // Send verification email
+    const verificationUrl = `${getFrontendUrl()}/verify-email?token=${encodeURIComponent(emailToken)}&email=${encodeURIComponent(user.email)}`;
+    
+    await sendEmail({
+      email: user.email,
+      subject: 'Verify Your CrunchFit Account',
+      message: `Please verify your email by clicking this link: ${verificationUrl}`,
+      html: `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+          <h2>Verify Your Email</h2>
+          <p>Hi ${user.firstName},</p>
+          <p>You requested a new verification link. Please verify your email by clicking the button below:</p>
+          <p>
+            <a href="${verificationUrl}" style="background:#0ea5a8;color:#fff;padding:12px 20px;border-radius:6px;text-decoration:none;display:inline-block;">
+              Verify Email
+            </a>
+          </p>
+          <p>Or open this link:</p>
+          <p style="word-break: break-all;">${verificationUrl}</p>
+        </div>
+      `,
+    });
+
+    res.status(200).json({
+      success: true,
+      message: 'If an account with that email exists, a verification link has been sent.',
+    });
+  } catch (error) {
+    console.error('Resend verification failed:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to send verification email. Please try again later.',
     });
   }
 };

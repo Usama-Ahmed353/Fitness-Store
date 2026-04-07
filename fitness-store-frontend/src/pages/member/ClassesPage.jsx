@@ -201,7 +201,7 @@ const ClassesPage = () => {
             name: instructorName,
             id: cls.instructorId?._id || 'instr',
             bio: cls.instructorId?.bio || 'Certified trainer',
-            image: trainerUser?.profilePhoto || 'https://via.placeholder.com/80?text=TR',
+            image: trainerUser?.profilePhoto || `https://ui-avatars.com/api/?name=${encodeURIComponent(instructorName)}&background=2B3E50&color=E94560&size=128`,
           },
           difficulty:
             cls.difficulty?.charAt(0).toUpperCase() + cls.difficulty?.slice(1) || 'Intermediate',
@@ -628,13 +628,13 @@ const ClassesPage = () => {
                 className="space-y-4"
               >
                 {loadingClasses ? (
-                  <Card>
+                  <Card variant={isDark ? 'dark' : 'default'}>
                     <div className="flex items-center justify-center py-12">
                       <p className={isDark ? 'text-gray-300' : 'text-gray-700'}>Loading classes...</p>
                     </div>
                   </Card>
                 ) : filteredClasses.length === 0 ? (
-                  <Card>
+                  <Card variant={isDark ? 'dark' : 'default'}>
                     <div className="flex items-center justify-center py-12">
                       <AlertCircle className="w-12 h-12 text-gray-400 mr-4" />
                       <div>
@@ -670,13 +670,17 @@ const ClassesPage = () => {
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ delay: idx * 0.05 }}
                       >
-                        <Card className="p-4 sm:p-6">
+                        <Card variant={isDark ? 'dark-hover' : 'hover'} className="p-4 sm:p-6">
                           <div className="flex flex-col sm:flex-row gap-4">
                             {/* Instructor Image */}
                             <img
                               src={classItem.instructor.image}
                               alt={classItem.instructor.name}
-                              className="w-24 h-24 rounded-lg object-cover flex-shrink-0"
+                              className="w-24 h-24 rounded-lg object-cover flex-shrink-0 bg-dark-navy/20"
+                              onError={(e) => {
+                                e.target.onerror = null;
+                                e.target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(classItem.instructor.name || 'Trainer')}&background=2B3E50&color=E94560&size=128`;
+                              }}
                             />
 
                             {/* Class Details */}
@@ -807,7 +811,7 @@ const ClassesPage = () => {
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
               >
-                <Card>
+                <Card variant={isDark ? 'dark' : 'default'}>
                   <div className="space-y-6">
                     {/* Week navigation */}
                     <div className="flex items-center justify-between mb-6">

@@ -7,6 +7,8 @@ import Navbar from '../components/layout/Navbar';
 import Footer from '../components/layout/Footer';
 import ScrollToTop from '../components/layout/ScrollToTop';
 import MemberSidebarLayout from '../layouts/MemberLayout';
+import AdminSidebarLayout from '../layouts/AdminLayout';
+import GymOwnerSidebarLayout from '../layouts/GymOwnerLayout';
 import ErrorBoundary from '../components/error/ErrorBoundary';
 import LoadingFallback from '../components/loading/LoadingFallback';
 import GlobalLoadingBar from '../components/loading/GlobalLoadingBar';
@@ -112,24 +114,20 @@ const MemberLayoutRoute = () => (
 
 // Admin Layout (protected)
 const AdminLayoutRoute = () => (
-  <div className="flex min-h-screen bg-dark-navy dark:bg-gray-900">
-    <main id="main-content" className="flex-grow">
-      <Suspense fallback={<RouteSpinner />}>
-        <Outlet />
-      </Suspense>
-    </main>
-  </div>
+  <AdminSidebarLayout>
+    <Suspense fallback={<RouteSpinner />}>
+      <Outlet />
+    </Suspense>
+  </AdminSidebarLayout>
 );
 
 // Gym Owner Layout (protected)
 const GymOwnerLayoutRoute = () => (
-  <div className="flex min-h-screen bg-dark-navy dark:bg-gray-900">
-    <main id="main-content" className="flex-grow">
-      <Suspense fallback={<RouteSpinner />}>
-        <Outlet />
-      </Suspense>
-    </main>
-  </div>
+  <GymOwnerSidebarLayout>
+    <Suspense fallback={<RouteSpinner />}>
+      <Outlet />
+    </Suspense>
+  </GymOwnerSidebarLayout>
 );
 
 const AppRouter = () => {

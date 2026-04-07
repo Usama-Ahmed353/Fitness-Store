@@ -64,12 +64,32 @@ const BillingSettings = ({ userId, currentUser, onUnsavedChanges, onUpdate }) =>
   const [isSaving, setIsSaving] = useState(false);
   const [saveStatus, setSaveStatus] = useState(null);
 
+  const [showPlanModal, setShowPlanModal] = useState(false);
+  const availablePlans = [
+    { id: 'base', name: 'Base Membership', amount: 9.99 },
+    { id: 'standard', name: 'Standard Membership', amount: 19.99 },
+    { id: 'premium', name: 'Premium Membership', amount: 29.99 },
+    { id: 'elite', name: 'Elite Membership', amount: 49.99 }
+  ];
+
   const handleAddCard = async (e) => {
     e.preventDefault();
     setIsSaving(true);
 
     // Simulate API call
     setTimeout(() => {
+      setPaymentMethods(prev => [
+        ...prev,
+        {
+          id: Date.now().toString(),
+          type: 'card',
+          last4: newCard.cardNumber ? newCard.cardNumber.slice(-4) : 'XXXX',
+          brand: 'Visa', // Default simulated brand
+          expiryDate: newCard.expiryDate,
+          isDefault: prev.length === 0
+        }
+      ]);
+
       setSaveStatus({
         type: 'success',
         message: 'Card added successfully!'
@@ -82,7 +102,7 @@ const BillingSettings = ({ userId, currentUser, onUnsavedChanges, onUpdate }) =>
       });
       setShowAddCard(false);
       setIsSaving(false);
-      onUnsavedChanges(false);
+      onUnsavedChanges(true); // Assuming adding a card modifies settings state
     }, 1500);
   };
 
@@ -102,7 +122,18 @@ const BillingSettings = ({ userId, currentUser, onUnsavedChanges, onUpdate }) =>
   };
 
   const handleChangePlan = () => {
-    // Navigate to plan selection
+    setShowPlanModal(true);
+  };
+
+  const handleSelectPlan = (plan) => {
+    setSubscription(prev => ({
+      ...prev,
+      plan: plan.id,
+      amount: plan.amount
+    }));
+    setShowPlanModal(false);
+    setSaveStatus({ type: 'success', message: `Plan successfully changed to ${plan.name}!` });
+    onUnsavedChanges(true);
   };
 
   const formatCardNumber = (value) => {
@@ -121,10 +152,10 @@ const BillingSettings = ({ userId, currentUser, onUnsavedChanges, onUpdate }) =>
     <div className="space-y-6">
       <div>
         <h2 className={`text-2xl font-bold ${isDark ? 'text-white' : 'text-gray-900'} mb-2`}>
-          {t('settings.billing') || 'Billing & Subscription'}
+          Billing & Subscription
         </h2>
         <p className={`${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
-          {t('settings.billingDescription') || 'Manage your subscription and payment methods'}
+          Manage your subscription and payment methods
         </p>
       </div>
 
@@ -139,8 +170,8 @@ const BillingSettings = ({ userId, currentUser, onUnsavedChanges, onUpdate }) =>
             <h3 className={`text-lg font-semibold ${isDark ? 'text-white' : 'text-gray-900'}`}>
               {t('settings.currentPlan') || 'Current Plan'}
             </h3>
-            <p className={`text-sm mt-1 ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
-              {subscription.plan === 'premium' ? 'Premium Membership' : 'Standard Membership'}
+            <p className={`text-sm mt-1 ${isDark ? 'text-gray-400' : 'text-gray-600'} capitalize`}>
+              {subscription.plan} Membership
             </p>
           </div>
           <div className="flex items-center gap-2 px-3 py-1 bg-green-500/20 rounded-full">
@@ -224,7 +255,7 @@ const BillingSettings = ({ userId, currentUser, onUnsavedChanges, onUpdate }) =>
               <CreditCard size={24} className="text-blue-500" />
             </div>
             <h3 className={`text-lg font-semibold ${isDark ? 'text-white' : 'text-gray-900'}`}>
-              {t('settings.paymentMethods') || 'Payment Methods'}
+              Payment Methods
             </h3>
           </div>
           <motion.button
@@ -421,7 +452,7 @@ const BillingSettings = ({ userId, currentUser, onUnsavedChanges, onUpdate }) =>
         className={`p-6 rounded-lg border ${isDark ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}
       >
         <h3 className={`text-lg font-semibold mb-4 ${isDark ? 'text-white' : 'text-gray-900'}`}>
-          {t('settings.billingHistory') || 'Billing History'}
+          Billing History
         </h3>
 
         <div className="overflow-x-auto">
@@ -505,6 +536,50 @@ const BillingSettings = ({ userId, currentUser, onUnsavedChanges, onUpdate }) =>
             {saveStatus.message}
           </p>
         </motion.div>
+      )}
+
+      {/* Change Plan Modal */}
+      {showPlanModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <motion.div
+            initial={{ scale: 0.95, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            className={`w-full max-w-md p-6 rounded-xl border ${
+              isDark ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'
+            }`}
+          >
+            <div className="flex justify-between items-center mb-6">
+              <h3 className={`text-xl font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>
+                Select a Plan
+              </h3>
+              <button 
+                onClick={() => setShowPlanModal(false)}
+                className={`p-2 rounded-lg ${isDark ? 'hover:bg-gray-700 text-gray-400' : 'hover:bg-gray-100 text-gray-600'}`}
+              >
+                <X size={20} />
+              </button>
+            </div>
+            
+            <div className="space-y-3 mb-6">
+              {availablePlans.map(plan => (
+                <div 
+                  key={plan.id}
+                  onClick={() => handleSelectPlan(plan)}
+                  className={`p-4 rounded-lg border cursor-pointer transition-colors ${
+                    subscription.plan === plan.id
+                      ? 'border-blue-500 bg-blue-500/10'
+                      : isDark ? 'border-gray-600 hover:border-gray-500 hover:bg-gray-700' : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
+                  }`}
+                >
+                  <div className="flex justify-between items-center">
+                    <p className={`font-semibold ${isDark ? 'text-white' : 'text-gray-900'}`}>{plan.name}</p>
+                    <p className="font-bold text-blue-500">${plan.amount}/mo</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </motion.div>
+        </div>
       )}
     </div>
   );

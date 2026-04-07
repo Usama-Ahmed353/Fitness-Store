@@ -158,21 +158,14 @@ const RegisterPage = () => {
       };
 
       const result = await dispatch(registerAsync(payload)).unwrap();
-      
+
       if (result) {
-        dispatch(clearAuth());
-        if (result.emailSent === false) {
-          toast.error(result.emailError || 'Account created, but verification email could not be sent.');
-          if (result.verificationUrl) {
-            toast('Development mode: using fallback verification link from API response.');
-            const parsedUrl = new URL(result.verificationUrl);
-            navigate(`/verify-email${parsedUrl.search}`);
-            return;
-          }
+        toast.success(result.message || 'Account created successfully!');
+        if (normalizedAccountType === 'gym_owner') {
+          navigate('/admin/dashboard');
         } else {
-          toast.success('Account created! Check your email to verify.');
+          navigate('/member/dashboard');
         }
-        navigate(`/verify-email?email=${encodeURIComponent(payload.email)}`);
       }
     } catch (err) {
       toast.error(typeof err === 'string' ? err : (err?.message || 'Registration failed'));
