@@ -207,7 +207,11 @@ const MembershipPage = () => {
                 <Card
                   variant={plan.popular ? 'dark-hover' : 'dark'}
                   className={`h-full relative cursor-pointer ${plan.popular ? 'ring-2 ring-accent' : ''}`}
-                  onClick={() => navigate('/join')}
+                  onClick={() => {
+                    const planId = plan.name.toLowerCase().replace(' ', '-');
+                    localStorage.setItem('selectedPlan', planId);
+                    navigate('/join');
+                  }}
                 >
                   {plan.popular && (
                     <div className={`absolute -top-4 left-1/2 -translate-x-1/2`}>
@@ -253,6 +257,8 @@ const MembershipPage = () => {
                       className="w-full"
                       onClick={(e) => {
                         e.stopPropagation();
+                        const planId = plan.name.toLowerCase().replace(' ', '-');
+                        localStorage.setItem('selectedPlan', planId);
                         navigate('/join');
                       }}
                     >

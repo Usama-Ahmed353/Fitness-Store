@@ -57,7 +57,7 @@ exports.register = async (req, res, next) => {
     };
     const resolvedRole = roleMap[String(accountType || 'member').toLowerCase()] || 'member';
 
-    // Create user with auto-verification
+    // Create user with auto-verification disabled
     user = await User.create({
       firstName,
       lastName,
@@ -65,36 +65,52 @@ exports.register = async (req, res, next) => {
       password,
       role: resolvedRole,
       phone: phone || undefined,
-      isEmailVerified: true, // Auto-verify the user since SMTP is not configured
+      isEmailVerified: false, 
     });
 
-    // Create tokens
-    const accessToken = user.generateJWT();
-    const refreshToken = user.generateRefreshToken();
+    // Generate Email Verification Token
+    const emailToken = user.generateEmailVerificationToken();
+    await user.save({ validateBeforeSave: false });
 
-    // Set cookies
-    const cookieOptions = {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'Strict',
-    };
+    // Send verification email
+    const verificationUrl = `${getFrontendUrl()}/verify-email?token=${encodeURIComponent(emailToken)}&email=${encodeURIComponent(user.email)}`;
+    
+    let emailSent = false;
+    let emailError = null;
 
-    res.cookie('token', accessToken, { ...cookieOptions, maxAge: 7 * 24 * 60 * 60 * 1000 });
-    res.cookie('refreshToken', refreshToken, { ...cookieOptions, maxAge: 30 * 24 * 60 * 60 * 1000 });
+    try {
+      await sendEmail({
+        email: user.email,
+        subject: 'Verify Your CrunchFit Account',
+        message: `Please verify your email by clicking this link: ${verificationUrl}`,
+        html: `
+          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+            <h2>Verify Your Email</h2>
+            <p>Hi ${user.firstName},</p>
+            <p>Welcome to CrunchFit! Please verify your email by clicking the button below:</p>
+            <p>
+              <a href="${verificationUrl}" style="background:#0ea5a8;color:#fff;padding:12px 20px;border-radius:6px;text-decoration:none;display:inline-block;">
+                Verify Email
+              </a>
+            </p>
+            <p>Or open this link:</p>
+            <p style="word-break: break-all;">${verificationUrl}</p>
+          </div>
+        `,
+      });
+      emailSent = true;
+    } catch (err) {
+      console.error('Registration email verification sending failed:', err.message);
+      emailError = err.message;
+    }
 
     res.status(201).json({
       success: true,
-      message: 'Account created and verified successfully.',
-      accessToken,
-      refreshToken,
-      user: {
-        id: user._id,
-        firstName: user.firstName,
-        lastName: user.lastName,
-        name: `${user.firstName} ${user.lastName}`,
-        email: user.email,
-        role: user.role,
-      },
+      message: 'Account created. Please verify your email.',
+      requiredVerification: true,
+      emailSent,
+      emailError,
+      email: user.email,
     });
   } catch (error) {
     res.status(500).json({

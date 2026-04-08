@@ -20,12 +20,33 @@ const BillingSettings = ({ userId, currentUser, onUnsavedChanges, onUpdate }) =>
   const { isDark } = useTheme();
   const { t } = useLanguage();
 
-  const [subscription, setSubscription] = useState({
-    plan: currentUser?.subscription?.plan || 'premium',
-    status: currentUser?.subscription?.status || 'active',
-    nextBillingDate: '2024-04-15',
-    amount: 29.99,
-    frequency: 'monthly'
+  const [subscription, setSubscription] = useState(() => {
+    const savedPlan = localStorage.getItem('selectedPlan');
+    let onboardingPlan = null;
+    try {
+      const onboardingData = JSON.parse(localStorage.getItem('onboardingData'));
+      if (onboardingData && onboardingData.planId) {
+        onboardingPlan = onboardingData.planId;
+      }
+    } catch (e) {
+      // Ignore parse errors
+    }
+    const planId = currentUser?.subscription?.plan || savedPlan || onboardingPlan || 'base';
+    
+    const planDetails = [
+      { id: 'base', amount: 9.99 },
+      { id: 'peak', amount: 21.99 },
+      { id: 'peak-results', amount: 29.99 },
+      { id: 'peak-plus', amount: 34.99 }
+    ].find(p => p.id === planId) || { id: 'base', amount: 9.99 };
+
+    return {
+      plan: planId,
+      status: currentUser?.subscription?.status || 'active',
+      nextBillingDate: '2024-04-15',
+      amount: planDetails.amount,
+      frequency: 'monthly'
+    };
   });
 
   const [paymentMethods, setPaymentMethods] = useState([
@@ -67,9 +88,9 @@ const BillingSettings = ({ userId, currentUser, onUnsavedChanges, onUpdate }) =>
   const [showPlanModal, setShowPlanModal] = useState(false);
   const availablePlans = [
     { id: 'base', name: 'Base Membership', amount: 9.99 },
-    { id: 'standard', name: 'Standard Membership', amount: 19.99 },
-    { id: 'premium', name: 'Premium Membership', amount: 29.99 },
-    { id: 'elite', name: 'Elite Membership', amount: 49.99 }
+    { id: 'peak', name: 'Peak Membership', amount: 21.99 },
+    { id: 'peak-results', name: 'Peak Results Membership', amount: 29.99 },
+    { id: 'peak-plus', name: 'Peak Plus Membership', amount: 34.99 }
   ];
 
   const handleAddCard = async (e) => {
@@ -129,10 +150,22 @@ const BillingSettings = ({ userId, currentUser, onUnsavedChanges, onUpdate }) =>
     setSubscription(prev => ({
       ...prev,
       plan: plan.id,
-      amount: plan.amount
+      amount: plan.amount,
+      status: 'active'
     }));
+    localStorage.setItem('selectedPlan', plan.id);
     setShowPlanModal(false);
     setSaveStatus({ type: 'success', message: `Plan successfully changed to ${plan.name}!` });
+    onUnsavedChanges(true);
+  };
+
+  const handleCancelSubscription = () => {
+    setSubscription(prev => ({
+      ...prev,
+      status: 'cancelled',
+      nextBillingDate: 'N/A'
+    }));
+    setSaveStatus({ type: 'success', message: 'Subscription successfully cancelled.' });
     onUnsavedChanges(true);
   };
 
@@ -171,7 +204,7 @@ const BillingSettings = ({ userId, currentUser, onUnsavedChanges, onUpdate }) =>
               {t('settings.currentPlan') || 'Current Plan'}
             </h3>
             <p className={`text-sm mt-1 ${isDark ? 'text-gray-400' : 'text-gray-600'} capitalize`}>
-              {subscription.plan} Membership
+              {subscription.plan.replace('-', ' ')} Membership
             </p>
           </div>
           <div className="flex items-center gap-2 px-3 py-1 bg-green-500/20 rounded-full">
@@ -229,6 +262,7 @@ const BillingSettings = ({ userId, currentUser, onUnsavedChanges, onUpdate }) =>
           </motion.button>
           <motion.button
             type="button"
+            onClick={handleCancelSubscription}
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
             className={`flex-1 py-2 px-4 rounded-lg border font-medium transition-colors ${

@@ -547,21 +547,30 @@ exports.answerFAQWithAI = async (req, res) => {
     if (ai?.content) {
       answer = ai.content;
     } else {
-      // Rule-based FAQ fallback
+      // Rule-based FAQ fallback with simplified NLP via natural
       const lower = userMessage.toLowerCase();
-      if (/shipping|delivery|ship/.test(lower)) {
+      const natural = require('natural');
+      
+      const isMatch = (msg, keywords) => {
+        return keywords.some((kw) => {
+          if (msg.includes(kw)) return true;
+          return msg.split(' ').some(word => natural.JaroWinklerDistance(word, kw) > 0.85);
+        });
+      };
+
+      if (isMatch(lower, ['shipping', 'delivery', 'ship'])) {
         answer = '🚚 We offer FREE shipping on orders over $50. Standard delivery takes 3-5 business days. Express shipping (1-2 days) is available for $12.99.';
-      } else if (/return|refund/.test(lower)) {
+      } else if (isMatch(lower, ['return', 'refund', 'send back'])) {
         answer = '↩️ Returns are accepted within 30 days of delivery for unused items in original packaging. Refunds are processed within 5-7 business days after we receive the item.';
-      } else if (/payment|pay|card|stripe/.test(lower)) {
+      } else if (isMatch(lower, ['payment', 'pay', 'card', 'stripe', 'checkout'])) {
         answer = '💳 We accept credit/debit cards (Visa, Mastercard, Amex) via Stripe secure checkout. All payments are encrypted and processed securely.';
-      } else if (/order|how.*buy|how.*order/.test(lower)) {
+      } else if (isMatch(lower, ['order', 'buy', 'purchase'])) {
         answer = '🛒 To order: Browse products → Add to cart → Go to checkout → Enter shipping info → Pay with card. You\'ll receive an order confirmation email.';
-      } else if (/track|where.*order/.test(lower)) {
+      } else if (isMatch(lower, ['track', 'where is my order', 'status'])) {
         answer = '📦 Go to your Orders page to see current status and tracking info. You can also ask me "Where is my order?" and I\'ll look it up for you!';
-      } else if (/account|signup|register/.test(lower)) {
+      } else if (isMatch(lower, ['account', 'signup', 'register', 'login'])) {
         answer = '👤 Click "Register" at the top right. Fill in your details and you\'re ready to shop! You can also use demo accounts for testing.';
-      } else if (/coupon|discount|promo/.test(lower)) {
+      } else if (isMatch(lower, ['coupon', 'discount', 'promo', 'code'])) {
         answer = '🏷️ Available coupons: WELCOME10 (10% off), FIT20 (20% off $50+), SAVE15 (15% off $30+), SUMMER25 (25% off $100+). Apply at checkout!';
       } else {
         answer = "👋 I can help with: shipping info, return policy, payment methods, ordering, account setup, order tracking, and product recommendations. What would you like to know?";

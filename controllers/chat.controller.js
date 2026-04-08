@@ -2,6 +2,74 @@ const Product = require('../models/Product');
 const Order = require('../models/Order');
 const Cart = require('../models/Cart');
 
+const natural = require('natural');
+
+// Initialize NLP Classifier
+const classifier = new natural.BayesClassifier();
+
+// 1. Product Search
+const searchPhrases = ['show', 'find', 'search', 'looking for', 'get me', 'i want', 'i need', 'discover', 'browse'];
+searchPhrases.forEach(p => classifier.addDocument(p, 'search'));
+
+// 2. Add to Cart
+const addToCartPhrases = ['add to cart', 'put in cart', 'buy', 'purchase', 'add this', 'cart it', 'grab one'];
+addToCartPhrases.forEach(p => classifier.addDocument(p, 'add_to_cart'));
+
+// 3. View Cart
+const viewCartPhrases = ['cart', 'my cart', 'what is in my cart', 'view cart', 'show cart', 'cart items', 'basket'];
+viewCartPhrases.forEach(p => classifier.addDocument(p, 'view_cart'));
+
+// 4. Order Query
+const orderPhrases = ['order', 'my orders', 'order status', 'track', 'where is my', 'delivery status', 'track shipping'];
+orderPhrases.forEach(p => classifier.addDocument(p, 'order'));
+
+// 5. Recommendations
+const recommendPhrases = ['recommend', 'suggestion', 'trending', 'popular', 'best', 'top products', 'suggest me'];
+recommendPhrases.forEach(p => classifier.addDocument(p, 'recommend'));
+
+// 6. Categories
+const categoryPhrases = ['category', 'categories', 'what do you sell', 'what products', 'types of products', 'departments'];
+categoryPhrases.forEach(p => classifier.addDocument(p, 'category'));
+
+// 7. Help / FAQ
+const helpPhrases = ['help', 'support', 'faq', 'how do i', 'how to', 'assist', 'need help', 'guide'];
+helpPhrases.forEach(p => classifier.addDocument(p, 'help'));
+
+// 8. Policies (Shipping/Returns)
+const policyPhrases = ['shipping', 'delivery', 'return', 'refund', 'send back', 'exchange', 'policy'];
+policyPhrases.forEach(p => classifier.addDocument(p, 'policy'));
+
+classifier.train();
+
+// Helper to determine intent with confidence score
+function classifyIntent(msg) {
+  // Check exact matches via regex/substring first to not break existing strict keywords
+  if (matchesIntent(msg, ['show', 'find', 'search', 'looking for', 'get me', 'i want', 'i need'])) return 'search';
+  if (matchesIntent(msg, ['add to cart', 'put in cart', 'buy'])) return 'add_to_cart';
+  if (matchesIntent(msg, ['cart', 'my cart', "what's in my cart", 'view cart'])) return 'view_cart';
+  if (matchesIntent(msg, ['order', 'my orders', 'order status', 'track', 'where is my'])) return 'order';
+  if (matchesIntent(msg, ['recommend', 'suggestion', 'trending', 'popular', 'best'])) return 'recommend';
+  if (matchesIntent(msg, ['category', 'categories', 'what do you sell', 'what products'])) return 'category';
+  if (matchesIntent(msg, ['help', 'support', 'faq', 'how do i', 'how to'])) return 'help';
+  if (matchesIntent(msg, ['shipping', 'delivery', 'return', 'refund'])) return 'policy';
+
+  // Fallback to NLP probability
+  const classification = classifier.getClassifications(msg);
+  if (classification.length > 0 && classification[0].value > 0.05) {
+    return classification[0].label;
+  }
+  return 'default';
+}
+
+function matchesIntent(msg, keywords) {
+  // Use NLP Jaro-Winkler string similarity for typos
+  return keywords.some((kw) => {
+    if (msg.includes(kw)) return true;
+    const words = msg.split(' ');
+    return words.some(word => natural.JaroWinklerDistance(word, kw) > 0.85);
+  });
+}
+
 // @desc    AI Chat endpoint - handles natural language queries
 // @route   POST /api/chat
 exports.chat = async (req, res, next) => {
@@ -14,25 +82,36 @@ exports.chat = async (req, res, next) => {
     const lowerMsg = message.toLowerCase().trim();
     let response;
 
-    // Intent detection (rule-based + keyword matching)
-    if (matchesIntent(lowerMsg, ['show', 'find', 'search', 'looking for', 'get me', 'i want', 'i need'])) {
-      response = await handleProductSearch(lowerMsg, req.user);
-    } else if (matchesIntent(lowerMsg, ['add to cart', 'put in cart', 'buy'])) {
-      response = await handleAddToCart(lowerMsg, req.user);
-    } else if (matchesIntent(lowerMsg, ['cart', 'my cart', 'what\'s in my cart', 'view cart'])) {
-      response = await handleViewCart(req.user);
-    } else if (matchesIntent(lowerMsg, ['order', 'my orders', 'order status', 'track', 'where is my'])) {
-      response = await handleOrderQuery(lowerMsg, req.user);
-    } else if (matchesIntent(lowerMsg, ['recommend', 'suggestion', 'trending', 'popular', 'best'])) {
-      response = await handleRecommendations(lowerMsg);
-    } else if (matchesIntent(lowerMsg, ['category', 'categories', 'what do you sell', 'what products'])) {
-      response = await handleCategories();
-    } else if (matchesIntent(lowerMsg, ['help', 'support', 'faq', 'how do i', 'how to'])) {
-      response = handleFAQ(lowerMsg);
-    } else if (matchesIntent(lowerMsg, ['shipping', 'delivery', 'return', 'refund'])) {
-      response = handlePolicies(lowerMsg);
-    } else {
-      response = handleDefault();
+    const intent = classifyIntent(lowerMsg);
+
+    // Intent routing
+    switch(intent) {
+      case 'search':
+        response = await handleProductSearch(lowerMsg, req.user);
+        break;
+      case 'add_to_cart':
+        response = await handleAddToCart(lowerMsg, req.user);
+        break;
+      case 'view_cart':
+        response = await handleViewCart(req.user);
+        break;
+      case 'order':
+        response = await handleOrderQuery(lowerMsg, req.user);
+        break;
+      case 'recommend':
+        response = await handleRecommendations(lowerMsg);
+        break;
+      case 'category':
+        response = await handleCategories();
+        break;
+      case 'help':
+        response = handleFAQ(lowerMsg);
+        break;
+      case 'policy':
+        response = handlePolicies(lowerMsg);
+        break;
+      default:
+        response = handleDefault();
     }
 
     res.json({ success: true, data: response });
@@ -43,10 +122,6 @@ exports.chat = async (req, res, next) => {
 };
 
 // ============= Intent Handlers =============
-
-function matchesIntent(msg, keywords) {
-  return keywords.some((kw) => msg.includes(kw));
-}
 
 async function handleProductSearch(msg, user) {
   // Extract price constraints

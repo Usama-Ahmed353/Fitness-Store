@@ -30,6 +30,7 @@ import { logoutAsync } from '../app/slices/authSlice';
 const MemberLayout = ({ children }) => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
+  const [showNotifications, setShowNotifications] = useState(false);
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const location = useLocation();
@@ -38,6 +39,7 @@ const MemberLayout = ({ children }) => {
 
   const { profile: memberProfile } = useSelector((state) => state.member);
   const user = useSelector((state) => state.auth.user);
+  const { notifications, unreadCount } = useSelector((state) => state.notifications || { notifications: [], unreadCount: 0 });
 
   const memberName = memberProfile?.name || user?.name || 'Member';
   const memberInitials = memberName
@@ -236,24 +238,73 @@ const MemberLayout = ({ children }) => {
             {/* Right: Notifications + Profile */}
             <div className="flex items-center gap-4">
               {/* Notifications */}
-              <motion.button
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                className={`relative p-2 rounded-lg transition-colors ${
-                  isDark
-                    ? 'hover:bg-gray-700'
-                    : 'hover:bg-gray-100'
-                }`}
-                aria-label={t('accessibility.notifications')}
-              >
-                <Bell size={20} />
-                {/* Badge */}
-                <motion.span
-                  initial={{ scale: 0 }}
-                  animate={{ scale: 1 }}
-                  className="absolute top-1 right-1 w-2 h-2 bg-accent rounded-full"
-                />
-              </motion.button>
+              <div className="relative">
+                <motion.button
+                  onClick={() => setShowNotifications(!showNotifications)}
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  className={`relative p-2 rounded-lg transition-colors ${
+                    isDark
+                      ? 'hover:bg-gray-700'
+                      : 'hover:bg-gray-100'
+                  }`}
+                  aria-label={t('accessibility.notifications')}
+                >
+                  <Bell size={20} />
+                  {/* Badge */}
+                  {unreadCount > 0 && (
+                    <motion.span
+                      initial={{ scale: 0 }}
+                      animate={{ scale: 1 }}
+                      className="absolute top-1 right-1 w-2 h-2 bg-accent rounded-full"
+                    />
+                  )}
+                </motion.button>
+                <AnimatePresence>
+                  {showNotifications && (
+                    <motion.div
+                      initial={{ opacity: 0, y: -10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -10 }}
+                      className={`absolute right-0 top-12 w-80 rounded-lg shadow-xl border z-50 ${
+                        isDark ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'
+                      }`}
+                    >
+                      <div className={`p-4 border-b ${isDark ? 'border-gray-700' : 'border-gray-200'}`}>
+                        <h3 className={`font-semibold ${isDark ? 'text-white' : 'text-gray-900'}`}>
+                          {t('admin.notifications') || 'Notifications'}
+                        </h3>
+                      </div>
+                      <div className="max-h-80 overflow-y-auto">
+                        {notifications.length === 0 ? (
+                          <div className={`p-4 text-sm text-center ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
+                            No new notifications
+                          </div>
+                        ) : (
+                          notifications.map(notif => (
+                            <motion.div
+                              key={notif.id}
+                              layout
+                              className={`p-4 border-b last:border-b-0 ${
+                                isDark ? 'border-gray-700 hover:bg-gray-700/50' : 'border-gray-100 hover:bg-gray-50'
+                              } cursor-pointer`}
+                            >
+                              <div className="flex items-start gap-3">
+                                <div className={`w-2 h-2 rounded-full mt-2 ${!notif.read ? 'bg-accent' : 'bg-gray-400'}`} />
+                                <div className="flex-1">
+                                  <p className={`text-sm font-medium ${isDark ? 'text-gray-200' : 'text-gray-900'}`}>
+                                    {notif.message || notif.title}
+                                  </p>
+                                </div>
+                              </div>
+                            </motion.div>
+                          ))
+                        )}
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
 
               {/* Profile Dropdown */}
               <div className="relative">

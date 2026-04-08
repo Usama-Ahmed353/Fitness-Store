@@ -1,5 +1,8 @@
-import React, { useContext, useState } from 'react';
-import { motion } from 'framer-motion';
+import React, { useState } from 'react';
+import { useDispatch, useSelector } from 'react-redux';
+import { useNavigate } from 'react-router-dom';
+import { motion, AnimatePresence } from 'framer-motion';
+import { logoutAsync } from '../app/slices/authSlice';
 import {
   Menu,
   X,
@@ -21,6 +24,21 @@ const GymOwnerLayout = ({ children }) => {
   const { isDark } = useTheme();
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [showUserMenu, setShowUserMenu] = useState(false);
+  const [showNotifications, setShowNotifications] = useState(false);
+  const dispatch = useDispatch();
+  const navigate = useNavigate();
+  const { notifications, unreadCount } = useSelector((state) => state.notifications || { notifications: [], unreadCount: 0 });
+
+  const handleSignOut = async () => {
+    try {
+      await dispatch(logoutAsync()).unwrap();
+    } catch (error) {
+      // State is handled locally by thunk even on failure
+    } finally {
+      setShowUserMenu(false);
+      navigate('/login', { replace: true });
+    }
+  };
 
   const navItems = [
     { icon: LayoutDashboard, label: 'Dashboard', href: '/gym-owner/dashboard', active: true },
@@ -117,10 +135,58 @@ const GymOwnerLayout = ({ children }) => {
             </div>
 
             {/* Notifications */}
-            <button className="relative p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors">
-              <Bell size={20} />
-              <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>
-            </button>
+            <div className="relative">
+              <button
+                onClick={() => setShowNotifications(!showNotifications)}
+                className="relative p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+                aria-label="Notifications"
+              >
+                <Bell size={20} />
+                {unreadCount > 0 && <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full" />}
+              </button>
+
+              <AnimatePresence>
+                {showNotifications && (
+                  <motion.div
+                    initial={{ opacity: 0, y: -10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -10 }}
+                    className={`absolute right-0 mt-2 w-80 rounded-lg shadow-xl z-50 border ${
+                      isDark ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'
+                    }`}
+                  >
+                    <div className={`p-4 border-b ${isDark ? 'border-gray-700' : 'border-gray-200'}`}>
+                      <h3 className={`font-semibold ${isDark ? 'text-white' : 'text-gray-900'}`}>Notifications</h3>
+                    </div>
+                    <div className="max-h-80 overflow-y-auto">
+                      {notifications.length === 0 ? (
+                        <div className={`p-4 text-sm text-center ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
+                          No new notifications
+                        </div>
+                      ) : (
+                        notifications.map(notif => (
+                          <div
+                            key={notif.id}
+                            className={`p-4 border-b last:border-b-0 cursor-pointer ${
+                              isDark ? 'border-gray-700 hover:bg-gray-700/50' : 'border-gray-100 hover:bg-gray-50'
+                            }`}
+                          >
+                            <div className="flex items-start gap-3">
+                              <div className={`w-2 h-2 rounded-full mt-2 ${!notif.read ? 'bg-blue-500' : 'bg-gray-400'}`} />
+                              <div className="flex-1">
+                                <p className={`text-sm font-medium ${isDark ? 'text-gray-200' : 'text-gray-900'}`}>
+                                  {notif.message || notif.title}
+                                </p>
+                              </div>
+                            </div>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
 
             {/* User Avatar */}
             <div className="relative">
@@ -149,10 +215,10 @@ const GymOwnerLayout = ({ children }) => {
                     <Settings size={16} className="inline mr-2" />
                     Settings
                   </a>
-                  <a href="#" className="block px-4 py-2 text-sm text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 last:rounded-b-lg">
+                  <button onClick={handleSignOut} className="w-full text-left block px-4 py-2 text-sm text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 last:rounded-b-lg">
                     <LogOut size={16} className="inline mr-2" />
                     Sign Out
-                  </a>
+                  </button>
                 </motion.div>
               )}
             </div>

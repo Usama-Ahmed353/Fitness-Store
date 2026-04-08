@@ -160,6 +160,12 @@ const RegisterPage = () => {
       const result = await dispatch(registerAsync(payload)).unwrap();
 
       if (result) {
+        if (result.requiredVerification) {
+          toast.success(result.message || 'Account created! Please verify your email.');
+          navigate(`/verify-email?email=${encodeURIComponent(payload.email)}`);
+          return;
+        }
+
         toast.success(result.message || 'Account created successfully!');
         if (normalizedAccountType === 'gym_owner') {
           navigate('/admin/dashboard');

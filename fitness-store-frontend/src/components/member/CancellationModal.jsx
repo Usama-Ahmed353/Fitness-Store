@@ -50,13 +50,13 @@ const CancellationModal = ({ booking, onClose, onConfirm }) => {
         animate={{ scale: 1, y: 0 }}
         exit={{ scale: 0.95, y: 20 }}
         onClick={(e) => e.stopPropagation()}
-        className={`rounded-xl shadow-2xl max-w-md w-full overflow-hidden ${
+        className={`rounded-xl shadow-2xl max-w-md w-full overflow-hidden flex flex-col max-h-[90vh] ${
           isDark ? 'bg-gray-800' : 'bg-white'
         }`}
       >
         {/* Header */}
         <div
-          className={`px-6 py-4 border-b ${
+          className={`px-6 py-4 border-b shrink-0 ${
             isDark
               ? 'border-gray-700 bg-gray-700/50'
               : 'border-gray-200 bg-gray-50'
@@ -84,7 +84,7 @@ const CancellationModal = ({ booking, onClose, onConfirm }) => {
         </div>
 
         {/* Content */}
-        <div className="px-6 py-6 space-y-6">
+        <div className="px-6 py-6 space-y-6 overflow-y-auto flex-1">
           {/* Cancellation Policy */}
           <div
             className={`p-4 rounded-lg border-2 border-yellow-500/30 ${
@@ -254,7 +254,7 @@ const CancellationModal = ({ booking, onClose, onConfirm }) => {
 
         {/* Actions */}
         <div
-          className={`px-6 py-4 flex gap-3 border-t ${
+          className={`px-6 py-4 flex gap-3 border-t shrink-0 ${
             isDark ? 'border-gray-700' : 'border-gray-200'
           }`}
         >

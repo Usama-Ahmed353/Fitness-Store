@@ -135,28 +135,31 @@ export const registerAsync = createAsyncThunk(
   async (payload, { rejectWithValue }) => {
     try {
       const response = await apiClient.post('/auth/register', payload);
+      const data = response.data;
+
+      if (data.requiredVerification) {
+        return data; // Return unmodified data so UI can handle it
+      }
+
       const {
         user,
         accessToken,
         refreshToken,
-        emailSent,
-        emailError,
-        verificationUrl,
         message,
-      } = response.data;
+      } = data;
 
       if (refreshToken) {
         localStorage.setItem('refreshToken', refreshToken);
       }
 
-      apiClient.defaults.headers.common['Authorization'] = `Bearer ${accessToken}`;
+      if (accessToken) {
+        apiClient.defaults.headers.common['Authorization'] = `Bearer ${accessToken}`;
+      }
+      
       return {
         user,
         accessToken,
         refreshToken,
-        emailSent,
-        emailError,
-        verificationUrl,
         message,
       };
     } catch (error) {
@@ -301,10 +304,13 @@ const authSlice = createSlice({
       })
       .addCase(registerAsync.fulfilled, (state, action) => {
         state.isLoading = false;
-        state.user = action.payload.user;
-        state.accessToken = action.payload.accessToken;
-        state.refreshToken = action.payload.refreshToken;
-        state.isAuthenticated = true;
+        // Only set authentication details if we aren't requiring verification first
+        if (!action.payload.requiredVerification) {
+          state.user = action.payload.user;
+          state.accessToken = action.payload.accessToken;
+          state.refreshToken = action.payload.refreshToken;
+          state.isAuthenticated = true;
+        }
       })
       .addCase(registerAsync.rejected, (state, action) => {
         state.isLoading = false;
