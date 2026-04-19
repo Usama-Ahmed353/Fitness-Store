@@ -1,5 +1,5 @@
 import React, { useEffect, Suspense } from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate, Outlet } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate, Outlet, useLocation } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import { verifyTokenAsync, setStore } from '../app/slices/authSlice';
 import { useStore } from 'react-redux';
@@ -19,6 +19,18 @@ const RouteSpinner = () => (
     <div className="h-10 w-10 animate-spin rounded-full border-4 border-accent/30 border-t-accent" />
   </div>
 );
+
+// Route content wrapper that ensures fresh re-renders on route change
+const RouteContent = ({ children }) => {
+  const { pathname, search } = useLocation();
+  return (
+    <div key={`${pathname}${search}`} className="w-full">
+      <Suspense fallback={<RouteSpinner />}>
+        {children}
+      </Suspense>
+    </div>
+  );
+};
 
 // Lazy load pages for better performance
 const Home = React.lazy(() => import('../pages/public/HomePage'));
@@ -95,9 +107,9 @@ const PublicLayout = () => (
   <div className="flex flex-col min-h-screen bg-dark-navy dark:bg-gray-900">
     <Navbar />
     <main id="main-content" className="flex-grow">
-      <Suspense fallback={<RouteSpinner />}>
+      <RouteContent>
         <Outlet />
-      </Suspense>
+      </RouteContent>
     </main>
     <Footer />
   </div>
@@ -106,27 +118,27 @@ const PublicLayout = () => (
 // Member Layout (with sidebar, protected)
 const MemberLayoutRoute = () => (
   <MemberSidebarLayout>
-    <Suspense fallback={<RouteSpinner />}>
+    <RouteContent>
       <Outlet />
-    </Suspense>
+    </RouteContent>
   </MemberSidebarLayout>
 );
 
 // Admin Layout (protected)
 const AdminLayoutRoute = () => (
   <AdminSidebarLayout>
-    <Suspense fallback={<RouteSpinner />}>
+    <RouteContent>
       <Outlet />
-    </Suspense>
+    </RouteContent>
   </AdminSidebarLayout>
 );
 
 // Gym Owner Layout (protected)
 const GymOwnerLayoutRoute = () => (
   <GymOwnerSidebarLayout>
-    <Suspense fallback={<RouteSpinner />}>
+    <RouteContent>
       <Outlet />
-    </Suspense>
+    </RouteContent>
   </GymOwnerSidebarLayout>
 );
 

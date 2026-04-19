@@ -42,6 +42,62 @@ const COUPONS = {
   SUMMER25: { discount: 25, minOrder: 100, description: '25% off orders over $100' },
 };
 
+const STORE_QUERY_SYSTEM_PROMPT = `You are FitStore Assistant, an AI shopping and support assistant for a fitness e-commerce store.
+
+Your job:
+1. Answer only store-related questions.
+2. Understand paraphrases, synonyms, and minor spelling mistakes.
+3. Map user messages to the closest intent even when wording is different.
+4. Be helpful, concise, and action-oriented.
+
+Intent mapping rules:
+- search_products: user wants to see/find/browse items.
+  Examples: "show me products", "what do you have", "display items", "find something", "i need gym stuff"
+- recommend_products: user asks for trending/popular/best/recommended.
+  Examples: "trending", "recommended products", "best sellers", "top picks"
+- category_query: user asks what types/categories are available.
+- cart_action: add/view cart related queries.
+- order_query: track/order status/history.
+- policy_query: shipping, returns, refunds, exchange.
+- help: how to use store features.
+- fallback: unclear request.
+
+Important behavior:
+- Treat generic product requests (like "show me products") as search_products, not fallback.
+- If user text is close in meaning, still respond correctly (example: "recomended", "trendng", "sho me produtcs").
+- If intent is unclear, ask one short clarifying question.
+- Never invent unavailable products, prices, or policies.
+- If user asks something outside store scope, politely say you can help only with this store.
+
+Return format:
+Return ONLY valid JSON with this exact shape:
+{
+  "intent": "search_products|recommend_products|category_query|cart_action|order_query|policy_query|help|fallback",
+  "confidence": 0.0,
+  "normalized_query": "cleaned user request",
+  "filters": {
+    "category": null,
+    "price_min": null,
+    "price_max": null,
+    "brand": null,
+    "rating_min": null,
+    "sort": "relevance|popular|rating|price_low_to_high|price_high_to_low|newest"
+  },
+  "reply": "short natural language response for user",
+  "suggestions": ["suggestion 1", "suggestion 2", "suggestion 3"]
+}
+
+Confidence rules:
+- 0.85 to 1.0 when intent is obvious.
+- 0.60 to 0.84 when probable.
+- below 0.60 use fallback and ask clarification.
+
+If user says "show me products" or similar:
+- intent must be search_products
+- confidence must be at least 0.85
+- filters can stay null
+- suggestions should include category or trending options.`;
+
 function buildChatHistory(history = []) {
   if (!Array.isArray(history)) return [];
 
@@ -90,6 +146,30 @@ function normalizeFilters(parsed) {
   if (!Number.isNaN(max) && max >= 0) normalized.price.max = max;
 
   return normalized;
+}
+
+function getSearchFiltersFromAIResponse(parsedJson) {
+  if (!parsedJson || typeof parsedJson !== 'object') return null;
+
+  // New prompt shape: { intent, confidence, normalized_query, filters: { ... } }
+  const nestedFilters = parsedJson.filters && typeof parsedJson.filters === 'object'
+    ? parsedJson.filters
+    : null;
+
+  if (nestedFilters) {
+    return normalizeFilters({
+      category: nestedFilters.category,
+      brand: nestedFilters.brand,
+      minRating: nestedFilters.rating_min,
+      price: {
+        min: nestedFilters.price_min,
+        max: nestedFilters.price_max,
+      },
+    });
+  }
+
+  // Backward compatibility: old direct filter shape
+  return normalizeFilters(parsedJson);
 }
 
 function buildProductFilter(aiFilters) {
@@ -163,6 +243,7 @@ async function resolveOrderByIdentifier(orderId, userId, isAdmin) {
 exports.searchProductsWithAI = async (req, res) => {
   try {
     const userInput = String(req.body?.userInput || '').trim();
+    const lowerInput = userInput.toLowerCase();
     const history = buildChatHistory(req.body?.history);
 
     if (!userInput) {
@@ -173,8 +254,7 @@ exports.searchProductsWithAI = async (req, res) => {
     const ai = await safeGeminiCall([
       {
         role: 'system',
-        content:
-          'Convert user query into JSON filters: price, category, brand, rating. Return only JSON.',
+        content: STORE_QUERY_SYSTEM_PROMPT,
       },
       ...history,
       { role: 'user', content: userInput },
@@ -182,33 +262,119 @@ exports.searchProductsWithAI = async (req, res) => {
 
     let normalizedFilters;
     if (ai?.parsedJson) {
-      normalizedFilters = normalizeFilters(ai.parsedJson);
+      normalizedFilters = getSearchFiltersFromAIResponse(ai.parsedJson);
     } else {
-      // Rule-based fallback: extract filters from natural language
-      const lowerInput = userInput.toLowerCase();
-      const priceMatch = lowerInput.match(/under\s*\$?(\d+)/);
-      const aboveMatch = lowerInput.match(/(?:above|over)\s*\$?(\d+)/);
+      // Rule-based fallback: comprehensive price extraction from natural language
+      let priceMin = null;
+      let priceMax = null;
+
+      // "under $50", "below 50", "less than 50", "cheaper than 50", "up to 50", "max 50"
+      const underMatch = lowerInput.match(/(?:under|below|less than|cheaper than|up to|max|maximum)\s*\$?\s*(\d+(?:\.\d+)?)/i);
+      if (underMatch) priceMax = Number(underMatch[1]);
+
+      // "above $50", "over 50", "more than 50", "greater than 50", "min 50", "starting 50", "atleast 50"
+      const aboveMatch = lowerInput.match(/(?:above|over|more than|greater than|min|minimum|atleast|at least|starting|starts? from)\s*\$?\s*(\d+(?:\.\d+)?)/i);
+      if (aboveMatch) priceMin = Number(aboveMatch[1]);
+
+      // "between 20 and 80", "between $20 to $80", "from 20 to 80"
+      const betweenMatch = lowerInput.match(/(?:between|from)\s*\$?\s*(\d+(?:\.\d+)?)\s*(?:and|to|-)\s*\$?\s*(\d+(?:\.\d+)?)/i);
+      if (betweenMatch) {
+        priceMin = Number(betweenMatch[1]);
+        priceMax = Number(betweenMatch[2]);
+      }
+
+      // Range shorthand: "20-80" or "$20-$80"
+      if (!betweenMatch) {
+        const rangeMatch = lowerInput.match(/\$?(\d+(?:\.\d+)?)\s*-\s*\$?(\d+(?:\.\d+)?)/);
+        if (rangeMatch) {
+          priceMin = Number(rangeMatch[1]);
+          priceMax = Number(rangeMatch[2]);
+        }
+      }
+
+      // Keyword-based price defaults
+      if (priceMin === null && priceMax === null) {
+        if (/\b(cheap|budget|affordable|inexpensive|low price|low cost|cheapest|economical|bargain)\b/.test(lowerInput)) {
+          priceMax = 50;
+        } else if (/\b(expensive|premium|high end|highend|luxury|pricey|top tier|deluxe)\b/.test(lowerInput)) {
+          priceMin = 100;
+        } else if (/\b(mid range|midrange|moderate|medium price|average price)\b/.test(lowerInput)) {
+          priceMin = 30;
+          priceMax = 100;
+        }
+      }
+
       const foundCat = VALID_CATEGORIES.find((c) => lowerInput.includes(c));
       normalizedFilters = normalizeFilters({
         category: foundCat || null,
         price: {
-          min: aboveMatch ? Number(aboveMatch[1]) : null,
-          max: priceMatch ? Number(priceMatch[1]) : null,
+          min: priceMin,
+          max: priceMax,
         },
       });
     }
 
     const filter = buildProductFilter(normalizedFilters);
 
+    const isGenericProductRequest = /\b(show|list|display|browse|view|find|search|get|need|want|shop)\b/.test(lowerInput)
+      && /\b(product|products|item|items)\b/.test(lowerInput);
+    const isAllProductsRequest =
+      (/\b(all|every|entire|complete)\b/.test(lowerInput) && /\b(product|products|item|items|shop)\b/.test(lowerInput)) ||
+      /\b(show all products|all products|all items|entire shop)\b/.test(lowerInput);
+    const hasExplicitFilters =
+      Boolean(normalizedFilters.category) ||
+      Boolean(normalizedFilters.brand) ||
+      normalizedFilters.minRating !== null ||
+      normalizedFilters.price.min !== null ||
+      normalizedFilters.price.max !== null;
+
+    if (isAllProductsRequest && !hasExplicitFilters) {
+      const products = await Product.find({ isActive: true })
+        .sort({ createdAt: -1 })
+        .lean();
+
+      return res.json({
+        success: true,
+        data: {
+          query: userInput,
+          filters: normalizedFilters,
+          showAll: true,
+          totalCount: products.length,
+          products: products.map(serializeProduct),
+          suggestions: ['Show trending products', 'Show supplements', 'Show equipment'],
+        },
+      });
+    }
+
     // If no specific filters, try text search
     if (Object.keys(filter).length <= 1) {
-      const searchWords = userInput.replace(/show|me|find|get|i\s+want|i\s+need|looking\s+for/gi, '').trim();
+      const searchWords = userInput
+        .replace(/show|me|my|find|get|browse|list|display|view|products?|items?|i\s+want|i\s+need|looking\s+for/gi, '')
+        .trim();
       if (searchWords) {
         filter.$or = [
           { title: { $regex: searchWords.split(/\s+/).join('|'), $options: 'i' } },
           { tags: { $regex: searchWords.split(/\s+/).join('|'), $options: 'i' } },
         ];
       }
+    }
+
+    // Generic queries like "show my products" should return top products, not empty text-search results.
+    if (isGenericProductRequest && !hasExplicitFilters && !filter.$or) {
+      const products = await Product.find({ isActive: true })
+        .sort({ viewCount: -1, 'ratings.average': -1, createdAt: -1 })
+        .limit(20)
+        .lean();
+
+      return res.json({
+        success: true,
+        data: {
+          query: userInput,
+          filters: normalizedFilters,
+          products: products.map(serializeProduct),
+          suggestions: ['Show trending products', 'Show supplements', 'Show equipment'],
+        },
+      });
     }
 
     const products = await Product.find(filter)

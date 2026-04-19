@@ -6,11 +6,14 @@ import { useLocation } from 'react-router-dom';
  * Place inside <Router> so it has access to location context.
  */
 const ScrollToTop = () => {
-  const { pathname } = useLocation();
+  const { pathname, search } = useLocation();
 
   useEffect(() => {
+    console.log('Route changed to:', pathname + search);
     window.scrollTo(0, 0);
-  }, [pathname]);
+    // Force page repaint
+    window.dispatchEvent(new Event('routeChange'));
+  }, [pathname, search]);
 
   return null;
 };

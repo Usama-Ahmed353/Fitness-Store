@@ -1,0 +1,19 @@
+<svg width="1200" height="900" viewBox="0 0 1200 900" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="gymGradient1" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#1a3a52;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#0f1f2e;stop-opacity:1" />
+    </linearGradient>
+    <pattern id="dumbbells" x="0" y="0" width="200" height="200" patternUnits="userSpaceOnUse">
+      <circle cx="50" cy="50" r="8" fill="#e94560" opacity="0.3"/>
+      <rect x="40" y="45" width="20" height="10" fill="#e94560" opacity="0.2"/>
+      <circle cx="150" cy="150" r="8" fill="#e94560" opacity="0.3"/>
+      <rect x="140" y="145" width="20" height="10" fill="#e94560" opacity="0.2"/>
+    </pattern>
+  </defs>
+  <rect width="1200" height="900" fill="url(#gymGradient1)"/>
+  <rect width="1200" height="900" fill="url(#dumbbells)"/>
+  <circle cx="200" cy="200" r="150" fill="#e94560" opacity="0.1"/>
+  <circle cx="1000" cy="700" r="200" fill="#00bcd4" opacity="0.08"/>
+  <text x="600" y="450" font-size="64" font-weight="bold" fill="#ffffff" opacity="0.1" text-anchor="middle">GYM</text>
+</svg>

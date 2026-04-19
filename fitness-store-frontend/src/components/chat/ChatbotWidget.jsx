@@ -14,7 +14,7 @@ const BotDataRenderer = ({ data, onSuggestion }) => {
       {/* Products */}
       {data.products?.length > 0 && (
         <div className="space-y-1.5">
-          {data.products.slice(0, 4).map((p) => (
+          {(data.showAll ? data.products : data.products.slice(0, 4)).map((p) => (
             <a key={p.id} href={`/product/${p.slug}`} className="flex items-center gap-2 px-2 py-1.5 bg-white/10 rounded-lg hover:bg-white/20 transition text-xs">
               {p.image && <img src={p.image} alt="" className="w-8 h-8 rounded object-cover flex-shrink-0" />}
               <div className="flex-1 min-w-0">
@@ -139,11 +139,13 @@ const ChatbotWidget = () => {
 
   const quickActions = [
     { label: '🔥 Trending Products', text: 'Show trending products' },
+    { label: '💰 Budget Friendly', text: 'Show products under $50' },
     { label: '📦 Track My Order', text: 'Where is my order?' },
     { label: '🛒 View Cart', text: 'What\'s in my cart?' },
     { label: '📂 Categories', text: 'What categories do you have?' },
     { label: '🚚 Shipping Info', text: 'Shipping policy' },
     { label: '↩️ Return Policy', text: 'Return policy' },
+    { label: '💎 Premium Products', text: 'Show premium products' },
   ];
 
   return (

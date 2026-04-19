@@ -161,8 +161,17 @@ const HomePage = () => {
       <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.5 }}>
       {/* HERO SECTION */}
       <section className="relative h-screen bg-gradient-to-b from-dark-navy via-dark-navy/95 to-dark-navy flex items-center justify-start overflow-hidden">
+        {/* Background image */}
+        <div 
+          className="absolute inset-0 opacity-70 bg-cover bg-center" 
+          style={{
+            backgroundImage: 'url("https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=1400&h=1000&fit=crop")',
+            backgroundAttachment: 'fixed',
+          }}
+        />
+        
         {/* Background gradient overlay */}
-        <div className="absolute inset-0 bg-gradient-to-r from-dark-navy/90 to-transparent z-10" />
+        <div className="absolute inset-0 bg-gradient-to-r from-dark-navy/75 via-dark-navy/65 to-dark-navy/55 z-10" />
 
         {/* Animated background elements */}
         <motion.div
@@ -313,15 +322,15 @@ const HomePage = () => {
           className="max-w-7xl mx-auto px-4"
         >
           {[
-            { title: 'Group Fitness Studios', desc: 'High-energy classes every day' },
-            { title: 'Things to Lift', desc: 'Everything from free weights to machines' },
-            { title: 'Miles of Cardio', desc: 'State-of-the-art cardio equipment' },
-            { title: 'People Who Care', desc: 'Supportive community atmosphere' },
-            { title: 'Sparkling Clean', desc: 'Pristine facilities and equipment' },
+            { title: 'Group Fitness Studios', desc: 'High-energy classes every day', image: 'https://images.unsplash.com/photo-1552821206-f391b674c5e2?w=1400&h=900&fit=crop' },
+            { title: 'Things to Lift', desc: 'Everything from free weights to machines', image: 'https://images.unsplash.com/photo-1517836357463-d25ddfcbf042?w=1400&h=900&fit=crop' },
+            { title: 'Miles of Cardio', desc: 'State-of-the-art cardio equipment', image: 'https://images.unsplash.com/photo-1521575107034-e3fb0d8cd7f7?w=1400&h=900&fit=crop' },
+            { title: 'People Who Care', desc: 'Supportive community atmosphere', image: 'https://images.unsplash.com/photo-1540497905857-86e62286b55d?w=1400&h=900&fit=crop' },
+            { title: 'Sparkling Clean', desc: 'Pristine facilities and equipment', image: 'https://images.unsplash.com/photo-1534521173927-c106300c1c68?w=1400&h=900&fit=crop' },
           ].map((feature, idx) => (
             <SwiperSlide key={idx}>
-              <div className="relative h-96 md:h-[500px] bg-gradient-to-r from-accent/20 to-secondary/20 rounded-xl overflow-hidden group">
-                <div className="absolute inset-0 bg-dark-navy/60 group-hover:bg-dark-navy/40 transition-all duration-300 z-10" />
+              <div className="relative h-96 md:h-[500px] bg-gradient-to-r from-accent/20 to-secondary/20 rounded-xl overflow-hidden group bg-cover bg-center" style={{ backgroundImage: `url("${feature.image}")` }}>
+                <div className="absolute inset-0 bg-dark-navy/35 group-hover:bg-dark-navy/20 transition-all duration-300 z-10" />
                 <div className="absolute inset-0 flex flex-col items-center justify-center text-center px-6 z-20">
                   <motion.h3
                     initial={{ oppacity: 0, y: 20 }}
@@ -416,9 +425,11 @@ const HomePage = () => {
             <motion.div
               initial={{ opacity: 0, x: -40 }}
               whileInView={{ opacity: 1, x: 0 }}
-              className="relative h-96 rounded-xl overflow-hidden bg-gradient-to-br from-accent/30 to-secondary/30 flex items-center justify-center"
+              className="relative h-96 rounded-xl overflow-hidden bg-gradient-to-br from-accent/30 to-secondary/30 flex items-center justify-center bg-cover bg-center"
+              style={{ backgroundImage: 'url("https://images.unsplash.com/photo-1606078519240-2340e9b49a89?w=1000&h=1000&fit=crop")' }}
             >
-              <div className="rounded-3xl border border-white/20 bg-dark-navy/55 p-8 backdrop-blur-sm">
+              <div className="absolute inset-0 bg-dark-navy/25" />
+              <div className="relative z-10 rounded-3xl border border-white/20 bg-dark-navy/55 p-8 backdrop-blur-sm">
                 <Users size={86} className="text-white" />
               </div>
             </motion.div>
